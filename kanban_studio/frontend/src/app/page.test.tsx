@@ -1,17 +1,18 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { initialData } from "@/lib/kanban";
 import Home from "./page";
 
-// Mock resize observer for DnD kit
-global.ResizeObserver = vi.fn().mockImplementation(() => ({
-    observe: vi.fn(),
-    unobserve: vi.fn(),
-    disconnect: vi.fn(),
+// Mock the API so KanbanBoard doesn't hang on fetch after login
+vi.mock("@/lib/api", () => ({
+  fetchBoard: vi.fn().mockResolvedValue(initialData),
+  saveBoard: vi.fn().mockResolvedValue(undefined),
 }));
 
 describe("Home Page Authentication", () => {
   beforeEach(() => {
     localStorage.clear();
+    vi.clearAllMocks();
   });
 
   it("renders LoginForm when not authenticated", () => {
@@ -20,17 +21,19 @@ describe("Home Page Authentication", () => {
     expect(screen.getByPlaceholderText("Enter username...")).toBeInTheDocument();
   });
 
-  it("renders KanbanBoard when authenticated via localStorage", () => {
+  it("renders KanbanBoard when authenticated via localStorage", async () => {
     localStorage.setItem("kanban_auth", "true");
     render(<Home />);
     expect(screen.queryByText("Welcome To")).not.toBeInTheDocument();
-    expect(screen.getByText("One board. Five columns. Zero clutter.")).toBeInTheDocument();
+    // Wait for board to finish loading from (mocked) API
+    await waitFor(() =>
+      expect(screen.getAllByTestId(/column-/i)).toHaveLength(5)
+    );
   });
 
-  it("handles login flow correctly", () => {
+  it("handles login flow correctly", async () => {
     render(<Home />);
-    
-    // Simulate Login
+
     const usernameInput = screen.getByPlaceholderText("Enter username...");
     const passwordInput = screen.getByPlaceholderText("Enter password...");
     const loginButton = screen.getByRole("button", { name: "Sign In" });
@@ -40,6 +43,9 @@ describe("Home Page Authentication", () => {
     fireEvent.click(loginButton);
 
     expect(localStorage.getItem("kanban_auth")).toBe("true");
-    expect(screen.getByText("One board. Five columns. Zero clutter.")).toBeInTheDocument();
+    // Wait for board to load after login
+    await waitFor(() =>
+      expect(screen.getAllByTestId(/column-/i)).toHaveLength(5)
+    );
   });
 });

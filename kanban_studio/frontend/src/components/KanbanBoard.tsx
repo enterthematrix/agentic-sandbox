@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -14,6 +14,7 @@ import {
 import { KanbanColumn } from "@/components/KanbanColumn";
 import { KanbanCardPreview } from "@/components/KanbanCardPreview";
 import { createId, initialData, moveCard, type BoardData } from "@/lib/kanban";
+import { fetchBoard, saveBoard } from "@/lib/api";
 
 interface KanbanBoardProps {
   onLogout?: () => void;
@@ -22,6 +23,26 @@ interface KanbanBoardProps {
 export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
   const [board, setBoard] = useState<BoardData>(() => initialData);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Load board from API on mount
+  useEffect(() => {
+    fetchBoard()
+      .then((data) => setBoard(data))
+      .catch((err) => console.error("Failed to load board:", err))
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  // Debounced save — fires 500ms after the last mutation
+  const scheduleSave = useCallback((updatedBoard: BoardData) => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      saveBoard(updatedBoard).catch((err) =>
+        console.error("Failed to save board:", err)
+      );
+    }, 500);
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -43,40 +64,52 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
       return;
     }
 
-    setBoard((prev) => ({
-      ...prev,
-      columns: moveCard(prev.columns, active.id as string, over.id as string),
-    }));
+    setBoard((prev) => {
+      const updated = {
+        ...prev,
+        columns: moveCard(prev.columns, active.id as string, over.id as string),
+      };
+      scheduleSave(updated);
+      return updated;
+    });
   };
 
   const handleRenameColumn = (columnId: string, title: string) => {
-    setBoard((prev) => ({
-      ...prev,
-      columns: prev.columns.map((column) =>
-        column.id === columnId ? { ...column, title } : column
-      ),
-    }));
+    setBoard((prev) => {
+      const updated = {
+        ...prev,
+        columns: prev.columns.map((column) =>
+          column.id === columnId ? { ...column, title } : column
+        ),
+      };
+      scheduleSave(updated);
+      return updated;
+    });
   };
 
   const handleAddCard = (columnId: string, title: string, details: string) => {
     const id = createId("card");
-    setBoard((prev) => ({
-      ...prev,
-      cards: {
-        ...prev.cards,
-        [id]: { id, title, details: details || "No details yet." },
-      },
-      columns: prev.columns.map((column) =>
-        column.id === columnId
-          ? { ...column, cardIds: [...column.cardIds, id] }
-          : column
-      ),
-    }));
+    setBoard((prev) => {
+      const updated = {
+        ...prev,
+        cards: {
+          ...prev.cards,
+          [id]: { id, title, details: details || "No details yet." },
+        },
+        columns: prev.columns.map((column) =>
+          column.id === columnId
+            ? { ...column, cardIds: [...column.cardIds, id] }
+            : column
+        ),
+      };
+      scheduleSave(updated);
+      return updated;
+    });
   };
 
   const handleDeleteCard = (columnId: string, cardId: string) => {
     setBoard((prev) => {
-      return {
+      const updated = {
         ...prev,
         cards: Object.fromEntries(
           Object.entries(prev.cards).filter(([id]) => id !== cardId)
@@ -90,10 +123,22 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
             : column
         ),
       };
+      scheduleSave(updated);
+      return updated;
     });
   };
 
   const activeCard = activeCardId ? cardsById[activeCardId] : null;
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <p className="text-sm font-semibold uppercase tracking-widest text-[var(--gray-text)] animate-pulse">
+          Loading board…
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="relative overflow-hidden">

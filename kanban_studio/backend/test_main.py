@@ -65,3 +65,43 @@ def test_update_board_persists():
     new_get_res = client.get("/api/board")
     new_board = new_get_res.json()
     assert new_board["columns"][0]["title"] == "Modified Backlog"
+
+def test_swagger_placeholder_data_is_rejected():
+    """PUT with Swagger's auto-generated example values must return 422, not corrupt the DB."""
+    swagger_payload = {
+        "columns": [{"id": "string", "title": "string", "cardIds": ["string"]}],
+        "cards": {
+            "additionalProp1": {"id": "string", "title": "string", "details": "string"}
+        },
+    }
+    res = client.put("/api/board", json=swagger_payload)
+    assert res.status_code == 422, f"Expected 422 but got {res.status_code}: {res.text}"
+
+    # Board in DB must be unchanged (still 5 columns)
+    board = client.get("/api/board").json()
+    assert len(board["columns"]) == 5
+
+def test_add_card_auto_generates_id():
+    """POST /api/board/cards adds a card with a server-generated ID."""
+    res = client.post("/api/board/cards", json={
+        "column_id": "col-backlog",
+        "title": "Sprint planning",
+        "details": "Prepare tickets for next sprint."
+    })
+    assert res.status_code == 201
+    card = res.json()
+    assert card["title"] == "Sprint planning"
+    assert card["id"].startswith("card-")  # auto-generated
+
+    # Card should now appear in the board
+    board = client.get("/api/board").json()
+    backlog = next(c for c in board["columns"] if c["id"] == "col-backlog")
+    assert card["id"] in backlog["cardIds"]
+    assert card["id"] in board["cards"]
+
+def test_add_card_invalid_column():
+    res = client.post("/api/board/cards", json={
+        "column_id": "col-does-not-exist",
+        "title": "Orphan card",
+    })
+    assert res.status_code == 404

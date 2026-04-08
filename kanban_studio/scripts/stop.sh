@@ -1,9 +1,9 @@
 #!/bin/bash
-# Stop script for Mac
-
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-PROJECT_ROOT="$( dirname "$SCRIPT_DIR" )"
-
-cd "$PROJECT_ROOT"
-echo "Stopping Docker containers..."
-docker compose down
+# Kill any running uvicorn instance on port 8000
+PID=$(lsof -ti tcp:8000)
+if [ -n "$PID" ]; then
+  echo "▶ Stopping server (PID $PID)..."
+  kill "$PID"
+else
+  echo "No server running on port 8000."
+fi
