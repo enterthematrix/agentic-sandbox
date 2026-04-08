@@ -52,10 +52,10 @@ Now propose a database schema for the Kanban, saving it as JSON. Document the da
 
 ## Part 6: Backend
 Now add API routes to allow the backend to read and change the Kanban for a given user; test this thoroughly with backend unit tests. The database should be created if it doesn't exist.
-- [ ] Implement database initialization locally on startup.
-- [ ] Create `GET /api/board` to fetch board state.
-- [ ] Create `PUT /api/board` or `POST` actions to save board state.
-- [ ] Write backend unit tests using `pytest` and `httpx`.
+- [x] Implement database initialization locally on startup.
+- [x] Create `GET /api/board` to fetch board state.
+- [x] Create `PUT /api/board` or `POST` actions to save board state.
+- [x] Write backend unit tests using `pytest` and `httpx`.
 **Tests & Success Criteria**
 - All API routes work successfully when hit directly (Postman / tests).
 - Modifying the board via API persists across database reloads.

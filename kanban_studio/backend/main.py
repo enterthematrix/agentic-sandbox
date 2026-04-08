@@ -1,13 +1,43 @@
 import os
-from fastapi import FastAPI
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+from typing import Dict, Any, List
 
-app = FastAPI()
+from database import init_db, get_board_for_user, update_board_for_user
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    init_db()
+    yield
+    # Shutdown
+
+app = FastAPI(lifespan=lifespan)
+
+class BoardPayload(BaseModel):
+    columns: List[Any]
+    cards: Dict[str, Any]
 
 @app.get("/api/health")
 def health_check():
     return {"status": "ok", "message": "Hello from FastAPI!"}
+
+@app.get("/api/board", response_model=BoardPayload)
+def get_board():
+    # MVP hardcoded to 'user' since authentication is client-only demo state right now!
+    board = get_board_for_user("user")
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    return board
+
+@app.put("/api/board")
+def update_board(payload: BoardPayload):
+    update_board_for_user("user", payload.model_dump())
+    return {"status": "success"}
 
 # Mount static directory to serve Next.js frontend (SPA routing)
 if os.path.exists("static"):

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import KanbanBoard from "@/components/KanbanBoard";
+import { KanbanBoard } from "@/components/KanbanBoard";
 import { LoginForm } from "@/components/LoginForm";
 
 export default function Home() {
@@ -27,9 +27,7 @@ export default function Home() {
   }
 
   return isAuthenticated ? (
-    <main>
-      <KanbanBoard onLogout={handleLogout} />
-    </main>
+    <KanbanBoard onLogout={handleLogout} />
   ) : (
     <LoginForm onLogin={handleLogin} />
   );

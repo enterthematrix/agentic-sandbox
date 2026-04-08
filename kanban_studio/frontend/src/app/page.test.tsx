@@ -1,6 +1,13 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import Home from "./page";
+
+// Mock resize observer for DnD kit
+global.ResizeObserver = vi.fn().mockImplementation(() => ({
+    observe: vi.fn(),
+    unobserve: vi.fn(),
+    disconnect: vi.fn(),
+}));
 
 describe("Home Page Authentication", () => {
   beforeEach(() => {
