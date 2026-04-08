@@ -1,0 +1,11 @@
+services:
+  backend:
+    build:
+      context: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - /app/static
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
