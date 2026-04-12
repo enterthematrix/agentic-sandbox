@@ -8,6 +8,11 @@ models:
     model: qwen3.5:35b
     roles: [chat, edit]
     capabilities: [tool_use]
+    requestOptions:
+      # Qwen 3.5 performs better with thinking enabled for complex tool selection,
+      # but if you notice it looping, you can toggle this.
+      extraBodyProperties:
+        think: true
 
   - name: "OpenRouter: Claude 4 Sonnet"
     provider: openrouter
