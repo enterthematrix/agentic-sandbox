@@ -1,4 +1,4 @@
-name: New MCP server
+name: MCP server
 version: 0.0.1
 schema: v1
   # --- MCP SERVERS ---
@@ -9,6 +9,16 @@ mcpServers:
     - "-y"
     - "@modelcontextprotocol/server-filesystem"
     - "/Users/sanjeev.chauhan/workspace/"
+- name: "time"
+  command: "docker"
+  args:
+    - "run"
+    - "-i"
+    - "--rm"
+    - "-e"
+    - "LOCAL_TIMEZONE=${TZ:-Pacific/Auckland}"
+    - "mcp/time"
+
   env:
     # Some MCP servers require specific paths to be passed as env vars
     PATH: ${PATH}
