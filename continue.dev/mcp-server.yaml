@@ -1,0 +1,14 @@
+name: New MCP server
+version: 0.0.1
+schema: v1
+  # --- MCP SERVERS ---
+mcpServers:
+- name: "filesystem"
+  command: "npx"
+  args:
+    - "-y"
+    - "@modelcontextprotocol/server-filesystem"
+    - "/Users/sanjeev.chauhan/workspace/"
+  env:
+    # Some MCP servers require specific paths to be passed as env vars
+    PATH: ${PATH}

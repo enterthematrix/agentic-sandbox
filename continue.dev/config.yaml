@@ -1,0 +1,32 @@
+name: Hybrid Secure Config
+version: 1.0.0
+schema: v1
+
+models:
+  - name: "Local Qwen 3.5 (35B)"
+    provider: ollama
+    model: qwen3.5:35b
+    roles: [chat, edit]
+    capabilities: [tool_use]
+
+  - name: "OpenRouter: Claude 4 Sonnet"
+    provider: openrouter
+    model: anthropic/claude-4-sonnet
+    apiKey: ${OPENROUTER_API_KEY}
+    roles: [chat]
+
+tabAutocompleteModel:
+  name: "Autocomplete"
+  provider: ollama
+  model: qwen2.5-coder:7b
+
+embeddingsProvider:
+  provider: ollama
+  model: nomic-embed-text
+
+context:
+  - provider: codebase
+  - provider: terminal
+  - provider: file
+  - provider: diff
+  - provider: open
