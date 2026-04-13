@@ -9,6 +9,8 @@ models:
     roles: [chat, edit]
     capabilities: [tool_use]
     requestOptions:
+      "num_ctx": 65536,
+      "temperature": 0.1
       # Qwen 3.5 performs better with thinking enabled for complex tool selection,
       # but if you notice it looping, you can toggle this.
       extraBodyProperties:
