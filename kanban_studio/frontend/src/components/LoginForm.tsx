@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 interface LoginFormProps {
-  onLogin: () => void;
+  onLogin: (token: string) => void;
 }
 
 export function LoginForm({ onLogin }: LoginFormProps) {
@@ -9,12 +9,33 @@ export function LoginForm({ onLogin }: LoginFormProps) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === "user" && password === "password") {
-      onLogin();
-    } else {
-      setError("Invalid credentials");
+    setError("");
+
+    try {
+      const formData = new URLSearchParams();
+      formData.append("username", username);
+      formData.append("password", password);
+
+      const res = await fetch("/api/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        onLogin(data.access_token);
+      } else {
+        const errData = await res.json().catch(() => ({ detail: "Invalid credentials" }));
+        setError(errData.detail || "Invalid credentials");
+      }
+    } catch (err) {
+      console.error("Login attempt failed:", err);
+      setError("Failed to connect to server");
     }
   };
 

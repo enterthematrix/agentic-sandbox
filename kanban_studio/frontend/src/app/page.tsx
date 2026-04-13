@@ -8,17 +8,20 @@ export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const storedAuth = localStorage.getItem("kanban_auth");
-    setIsAuthenticated(storedAuth === "true");
+    const checkToken = async () => {
+      const token = localStorage.getItem("kanban_token");
+      setIsAuthenticated(!!token);
+    };
+    checkToken();
   }, []);
 
-  const handleLogin = () => {
-    localStorage.setItem("kanban_auth", "true");
+  const handleLogin = (token: string) => {
+    localStorage.setItem("kanban_token", token);
     setIsAuthenticated(true);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("kanban_auth");
+    localStorage.removeItem("kanban_token");
     setIsAuthenticated(false);
   };
 

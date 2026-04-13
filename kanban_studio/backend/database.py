@@ -1,7 +1,10 @@
 import sqlite3
 import json
+from passlib.context import CryptContext
 
 DB_PATH = "kanban.db"
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 DEFAULT_BOARD = {
     "columns": [
@@ -22,6 +25,12 @@ DEFAULT_BOARD = {
         "card-8": { "id": "card-8", "title": "Close onboarding sprint", "details": "Document release notes and share internally." },
     }
 }
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
 
 def get_connection():
     # Use check_same_thread=False since FastAPI relies on threading if async is not fully strictly executed
@@ -53,12 +62,23 @@ def init_db():
     # Setup initial mock payload if fresh
     c.execute("SELECT id FROM users WHERE username = ?", ("user",))
     if not c.fetchone():
-        c.execute("INSERT INTO users (username, password) VALUES (?, ?)", ("user", "password"))
+        hashed_password = get_password_hash("password")
+        c.execute("INSERT INTO users (username, password) VALUES (?, ?)", ("user", hashed_password))
         user_id = c.lastrowid
         c.execute("INSERT INTO boards (user_id, data) VALUES (?, ?)", (user_id, json.dumps(DEFAULT_BOARD)))
         
     conn.commit()
     conn.close()
+
+def get_user(username: str):
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("SELECT username, password FROM users WHERE username = ?", (username,))
+    row = c.fetchone()
+    conn.close()
+    if row:
+        return {"username": row[0], "password": row[1]}
+    return None
 
 def get_board_for_user(username: str):
     conn = get_connection()

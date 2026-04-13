@@ -1,12 +1,35 @@
-const nextJest = require('next/jest')
+"use client";
 
-const createJestConfig = nextJest({
-  dir: './',
-})
+import { useState, useEffect } from "react";
+import { KanbanBoard } from "@/components/KanbanBoard";
+import { LoginForm } from "@/components/LoginForm";
 
-const customJestConfig = {
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  testEnvironment: 'jest-environment-jsdom',
+export default function Home() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem("kanban_token");
+    // eslint-disable-next-line
+    setIsAuthenticated(!!token);
+  }, []);
+
+  const handleLogin = (token: string) => {
+    localStorage.setItem("kanban_token", token);
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("kanban_token");
+    setIsAuthenticated(false);
+  };
+
+  if (isAuthenticated === null) {
+    return null; // Avoid hydration mismatch
+  }
+
+  return isAuthenticated ? (
+    <KanbanBoard onLogout={handleLogout} />
+  ) : (
+    <LoginForm onLogin={handleLogin} />
+  );
 }
-
-module.exports = createJestConfig(customJestConfig)
