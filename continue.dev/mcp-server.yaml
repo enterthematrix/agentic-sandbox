@@ -3,12 +3,19 @@ version: 0.0.1
 schema: v1
   # --- MCP SERVERS ---
 mcpServers:
-- name: "filesystem"
+- name: Browser search
+  command: "npx"
+  args:
+    - "@playwright/mcp@latest"
+
+- name: "github"
   command: "npx"
   args:
     - "-y"
-    - "@modelcontextprotocol/server-filesystem"
-    - "/Users/sanjeev.chauhan/workspace/"
+    - "@modelcontextprotocol/server-github"
+  env:
+    GITHUB_PERSONAL_ACCESS_TOKEN: ${{ secrets.GITHUB_PERSONAL_ACCESS_TOKEN }}
+
 - name: "time"
   command: "docker"
   args:
@@ -19,6 +26,13 @@ mcpServers:
     - "LOCAL_TIMEZONE=${TZ:-Pacific/Auckland}"
     - "mcp/time"
 
+- name: "filesystem"
+  command: "npx"
+  args:
+    - "-y"
+    - "@modelcontextprotocol/server-filesystem"
+    - "/Users/sanjeev.chauhan/workspace/"
   env:
-    # Some MCP servers require specific paths to be passed as env vars
+    OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+    GITHUB_PERSONAL_ACCESS_TOKEN: ${{ secrets.GITHUB_PERSONAL_ACCESS_TOKEN }}
     PATH: ${PATH}
