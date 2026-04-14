@@ -143,6 +143,13 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
     setBoard(newBoard);
   };
 
+  const scrollToColumn = (columnId: string) => {
+    const el = document.getElementById(`column-${columnId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
+  };
+
   const activeCard = activeCardId ? cardsById[activeCardId] : null;
 
   if (isLoading) {
@@ -196,13 +203,14 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
           </div>
           <div className="flex flex-wrap items-center gap-4">
             {board.columns.map((column) => (
-              <div
+              <button
                 key={column.id}
-                className="flex items-center gap-2 rounded-full border border-[var(--stroke)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--navy-dark)]"
+                onClick={() => scrollToColumn(column.id)}
+                className="group flex items-center gap-2 rounded-full border border-[var(--stroke)] bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--navy-dark)] transition-all hover:border-[var(--primary-blue)] hover:bg-[var(--surface)] active:scale-95"
               >
-                <span className="h-2 w-2 rounded-full bg-[var(--accent-yellow)]" />
+                <span className="h-2 w-2 rounded-full bg-[var(--accent-yellow)] transition-transform group-hover:scale-125" />
                 {column.title}
-              </div>
+              </button>
             ))}
           </div>
         </header>
@@ -213,20 +221,23 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <section className="grid gap-6 lg:grid-cols-5">
-            {board.columns.map((column) => (
-              <KanbanColumn
-                key={column.id}
-                column={column}
-                cards={column.cardIds
-                  .map((cardId) => board.cards[cardId])
-                  .filter((card): card is NonNullable<typeof card> => !!card)}
-                onRename={handleRenameColumn}
-                onAddCard={handleAddCard}
-                onDeleteCard={handleDeleteCard}
-              />
-            ))}
-          </section>
+          <div className="relative -mx-6 flex-1 overflow-x-auto px-6 pb-4 scrollbar-hide">
+            <section className="flex gap-6 min-w-max">
+              {board.columns.map((column) => (
+                <div key={column.id} id={`column-${column.id}`} className="w-[320px] shrink-0">
+                  <KanbanColumn
+                    column={column}
+                    cards={column.cardIds
+                      .map((cardId) => board.cards[cardId])
+                      .filter((card): card is NonNullable<typeof card> => !!card)}
+                    onRename={handleRenameColumn}
+                    onAddCard={handleAddCard}
+                    onDeleteCard={handleDeleteCard}
+                  />
+                </div>
+              ))}
+            </section>
+          </div>
           <DragOverlay>
             {activeCard ? (
               <div className="w-[260px]">
