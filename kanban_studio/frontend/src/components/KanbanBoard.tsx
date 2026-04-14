@@ -15,6 +15,7 @@ import {
 } from "@dnd-kit/core";
 import { KanbanColumn } from "@/components/KanbanColumn";
 import { KanbanCardPreview } from "@/components/KanbanCardPreview";
+import { ChatSidebar } from "@/components/ChatSidebar";
 import { createId, initialData, moveCard, type BoardData } from "@/lib/kanban";
 import { fetchBoard, saveBoard } from "@/lib/api";
 
@@ -138,6 +139,10 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
     });
   };
 
+  const handleBoardUpdate = (newBoard: BoardData) => {
+    setBoard(newBoard);
+  };
+
   const activeCard = activeCardId ? cardsById[activeCardId] : null;
 
   if (isLoading) {
@@ -213,7 +218,9 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
               <KanbanColumn
                 key={column.id}
                 column={column}
-                cards={column.cardIds.map((cardId) => board.cards[cardId])}
+                cards={column.cardIds
+                  .map((cardId) => board.cards[cardId])
+                  .filter((card): card is NonNullable<typeof card> => !!card)}
                 onRename={handleRenameColumn}
                 onAddCard={handleAddCard}
                 onDeleteCard={handleDeleteCard}
@@ -229,6 +236,8 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps) => {
           </DragOverlay>
         </DndContext>
       </main>
+
+      <ChatSidebar board={board} onBoardUpdate={handleBoardUpdate} />
     </div>
   );
 };

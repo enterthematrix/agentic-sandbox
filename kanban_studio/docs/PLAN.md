@@ -79,16 +79,16 @@ Now allow the backend to make an AI call via OpenRouter. Test connectivity with 
 
 ## Part 9: AI updating Board State
 Now extend the backend call so that it always calls the AI with the JSON of the Kanban board, plus the user's question (and conversation history). The AI should respond with Structured Outputs that includes the response to the user and optionaly an update to the Kanban. Test thoroughly.
-- [ ] Implement system prompt configuring `openai/gpt-oss-120b` for Kanban updates.
-- [ ] Use Structured Output (JSON mode) so the LLM responds with `{"reply": "...", "kanban_update": {...}}`.
-- [ ] Add endpoint `POST /api/ai/chat` taking conversation list and optional board state.
+- [x] Implement system prompt configuring `openai/gpt-4o-mini` for Kanban updates.
+- [x] Use Structured Output (JSON mode) so the LLM responds with `{"reply": "...", "kanban_update": {...}}`.
+- [x] Add endpoint `POST /api/ai/chat` taking conversation list and optional board state.
 **Tests & Success Criteria**
 - The LLM successfully parses current rules and outputs valid structural JSON updates without breaking the board format.
 
 ## Part 10: Full AI features in UI
 Now add a beautiful sidebar widget to the UI supporting full AI chat, and allowing the LLM (as it determines) to update the Kanban based on its Structured Outputs. If the AI updates the Kanban, then the UI should refresh automatically.
-- [ ] Create chat sidebar UI Component in React using Yellow/Blue/Purple color scheme.
-- [ ] Manage chat history state and sync correctly with backend.
-- [ ] Trigger a board UI state refresh anytime the backend AI route signals a `kanban_update` in the response.
+- [x] Create chat sidebar UI Component in React using Yellow/Blue/Purple color scheme.
+- [x] Manage chat history state and sync correctly with backend.
+- [x] Trigger a board UI state refresh anytime the backend AI route signals a `kanban_update` in the response.
 **Tests & Success Criteria**
 - Chat visually works. Asking the AI "Create a card to walk the dog" automatically creates the card and refreshes the main UI seamlessly.

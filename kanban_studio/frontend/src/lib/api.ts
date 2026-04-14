@@ -5,6 +5,16 @@ function getAuthHeader(): Record<string, string> {
   return token ? { "Authorization": `Bearer ${token}` } : {};
 }
 
+export interface ChatMessage {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+
+export interface ChatResponse {
+  reply: string;
+  kanban_update: BoardData | null;
+}
+
 export async function fetchBoard(): Promise<BoardData> {
   const res = await fetch("/api/board", {
     headers: getAuthHeader()
@@ -40,6 +50,21 @@ export async function addCardToApi(columnId: string, title: string, details: str
   });
   if (!res.ok) {
     throw new Error(`Failed to add card: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function aiChat(messages: ChatMessage[], board: BoardData): Promise<ChatResponse> {
+  const res = await fetch("/api/ai/chat", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeader()
+    },
+    body: JSON.stringify({ messages, board }),
+  });
+  if (!res.ok) {
+    throw new Error(`AI chat failed: ${res.status}`);
   }
   return res.json();
 }

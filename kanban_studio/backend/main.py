@@ -126,6 +126,44 @@ class NewCardRequest(BaseModel):
         "details": "Summarise what shipped in v1.2 for the changelog."
     }}}
 
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage]
+    board: Optional[BoardPayload] = None
+
+class ChatResponse(BaseModel):
+    reply: str
+    kanban_update: Optional[BoardPayload] = None
+
+KANBAN_SYSTEM_PROMPT = """
+You are a helpful AI assistant managing a Kanban board.
+The current board state is provided in JSON format.
+You can chat with the user and optionally update the Kanban board.
+
+If the user asks to add, move, rename, or delete cards or columns, you SHOULD update the board.
+To update the board, provide the ENTIRE updated board state in the `kanban_update` field of your JSON response.
+If you don't need to update the board, set `kanban_update` to null.
+
+Your response must be a valid JSON object with the following structure:
+{
+  "reply": "Your text response to the user here.",
+  "kanban_update": { ... } // The full board state or null
+}
+
+Maintain the same JSON structure for the board:
+- `columns`: List of {id, title, cardIds}
+- `cards`: Dict of cardId -> {id, title, details}
+
+Important:
+1. Always return a valid JSON object.
+2. If updating `kanban_update`, ensure all IDs exist and are consistent.
+3. If creating new cards, use a format like "card-ai-XXXX" where XXXX is random.
+4. Be concise and helpful.
+"""
+
 # ---------------------------------------------------------------------------
 # Auth logic
 # ---------------------------------------------------------------------------
@@ -276,6 +314,71 @@ async def test_ai_connectivity():
             return {"status": "success", "answer": answer}
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"OpenRouter call failed: {str(e)}")
+
+@app.post(
+    "/api/ai/chat",
+    response_model=ChatResponse,
+    tags=["AI"],
+    summary="Chat with the AI about the Kanban board",
+    description="Sends the conversation history and (optional) board state to the AI. The AI can respond with text and an updated board state.",
+)
+async def ai_chat(req: ChatRequest, current_user: Annotated[User, Depends(get_current_user)]):
+    if not OPENROUTER_API_KEY:
+        raise HTTPException(status_code=500, detail="OPENROUTER_API_KEY not set")
+
+    system_content = KANBAN_SYSTEM_PROMPT
+    if req.board:
+        import json
+        system_content += f"\n\nCurrent Board State:\n{json.dumps(req.board.model_dump(), indent=2)}"
+
+    messages = [{"role": "system", "content": system_content}]
+    for m in req.messages:
+        messages.append({"role": m.role, "content": m.content})
+
+    print(f"DEBUG: AI Chat request from user {current_user.username}")
+    print(f"DEBUG: Messages count: {len(messages)}")
+
+    async with httpx.AsyncClient() as client:
+        try:
+            # Using gpt-4o-mini as it's better for structured output
+            response = await client.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "openai/gpt-4o-mini",
+                    "messages": messages,
+                    "response_format": {"type": "json_object"}
+                },
+                timeout=45.0
+            )
+            response.raise_for_status()
+            data = response.json()
+            content = data["choices"][0]["message"]["content"]
+            
+            print(f"DEBUG: AI Response content: {content[:200]}...")
+            
+            import json
+            ai_json = json.loads(content)
+            
+            reply = ai_json.get("reply", "I've processed your request.")
+            kanban_update = ai_json.get("kanban_update")
+            
+            if kanban_update:
+                print(f"DEBUG: Kanban update received from AI!")
+                update_board_for_user(current_user.username, kanban_update)
+            else:
+                print(f"DEBUG: No kanban update from AI.")
+            
+            return ChatResponse(
+                reply=reply,
+                kanban_update=kanban_update
+            )
+        except Exception as e:
+            print(f"AI Chat Error: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"AI chat failed: {str(e)}")
 
 # ---------------------------------------------------------------------------
 # Static file serving (Next.js frontend)
