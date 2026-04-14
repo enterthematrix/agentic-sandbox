@@ -3,9 +3,29 @@
 ## Tooling & Configs
 > **Tip:** Keep your environment variables in a `.env.example` to avoid leaking keys.
 
-### Local LLM Setup (Ollama + uv)
-To keep the toolchain lean, use `uv` for python management:
-`uv pip install langchain-ollama`
+### Local LLM Setup (Ollama | Openrouter)
+To configure Claude Code for Kimi K2.5 via OpenRouter :
+> **Tip:**  You can pick the model "openrouter/free" as described [here](https://openrouter.ai/openrouter/free) to be automatically routed to a working free model
+```
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="moonshotai/kimi-k2.5"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="moonshotai/kimi-k2.5"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="moonshotai/kimi-k2.5"
+export ANTHROPIC_BASE_URL="https://openrouter.ai/api"
+export ANTHROPIC_AUTH_TOKEN="PUT YOUR OPENROUTER KEY HERE"
+export ANTHROPIC_API_KEY=""
+claude --model moonshotai/kimi-k2.5
+```
+To configure Claude Code for GPT-OSS 20B via Ollama on a Mac:
+```
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="gpt-oss"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="gpt-oss"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="gpt-oss"
+export ANTHROPIC_BASE_URL="http://localhost:11434"
+export ANTHROPIC_AUTH_TOKEN="ollama"
+export ANTHROPIC_API_KEY=""
+ollama pull gpt-oss
+claude --model gpt-oss
+```
 
 ### Docker & Colima (macOS)
 Lightweight, CLI-first Docker environment for macOS, optimized for Apple Silicon.
@@ -40,3 +60,5 @@ sudo ln -sf $HOME/.colima/default/docker.sock /var/run/docker.sock
 ## Resources
 * [Model Context Protocol Docs](https://modelcontextprotocol.io)
 * [MCP Servers](https://github.com/modelcontextprotocol/servers)
+* [OpenCode](https://opencode.ai/)
+* [Amp](https://ampcode.com/)
