@@ -62,18 +62,18 @@ Now add API routes to allow the backend to read and change the Kanban for a give
 
 ## Part 7: Frontend + Backend
 Now have the frontend actually use the backend API, so that the app is a proper persistent Kanban board. Test very throughly.
-- [ ] Replace isolated memory state logic in `frontend` with actual fetch API calls.
-- [ ] Display loading states while pulling board data on component mount.
-- [ ] Trigger an API save upon any Drag-and-Drop action or column rename.
+- [x] Replace isolated memory state logic in `frontend` with actual fetch API calls.
+- [x] Display loading states while pulling board data on component mount.
+- [x] Trigger an API save upon any Drag-and-Drop action or column rename.
 **Tests & Success Criteria**
 - Reloading the web browser maintains the exact positions and column names of the board.
 - End-to-end `playwright` tests verify the persistence of card movements.
 
 ## Part 8: AI connectivity
 Now allow the backend to make an AI call via OpenRouter. Test connectivity with a simple "2+2" test and ensure the AI call is working.
-- [ ] Integrate OpenRouter API call mechanism in `backend`.
-- [ ] Inject `OPENROUTER_API_KEY` from `.env`.
-- [ ] Create a trivial endpoint `GET /api/ai/test` that asks the LLM "What is 2+2?", verifies the setup works.
+- [x] Integrate OpenRouter API call mechanism in `backend`.
+- [x] Inject `OPENROUTER_API_KEY` from `.env`.
+- [x] Create a trivial endpoint `GET /api/ai/test` that asks the LLM "What is 2+2?", verifies the setup works.
 **Tests & Success Criteria**
 - The test endpoint successfully responds with "4".
 

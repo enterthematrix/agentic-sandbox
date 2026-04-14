@@ -23,7 +23,7 @@ test("adds a card to a column", async ({ page }) => {
   await expect(firstColumn.getByText("Playwright card")).toBeVisible();
 });
 
-test("moves a card between columns", async ({ page }) => {
+test("moves a card and persists after reload", async ({ page }) => {
   const card = page.getByTestId("card-card-1");
   const targetColumn = page.getByTestId("column-col-review");
   const cardBox = await card.boundingBox();
@@ -32,6 +32,7 @@ test("moves a card between columns", async ({ page }) => {
     throw new Error("Unable to resolve drag coordinates.");
   }
 
+  // Drag and drop card-1 to review column
   await page.mouse.move(
     cardBox.x + cardBox.width / 2,
     cardBox.y + cardBox.height / 2
@@ -43,6 +44,48 @@ test("moves a card between columns", async ({ page }) => {
     { steps: 12 }
   );
   await page.mouse.up();
+  
+  // Verify it moved
   await expect(targetColumn.getByTestId("card-card-1")).toBeVisible();
+  
+  // Wait for debounced save (500ms)
+  await page.waitForTimeout(1000);
+  
+  // Reload page
+  await page.reload();
+  
+  // Verify it is still in the target column
+  await expect(page.getByTestId("column-col-review").getByTestId("card-card-1")).toBeVisible();
+});
+
+test("moves a card to Discovery and Review columns", async ({ page }) => {
+  const card = page.getByTestId("card-card-1");
+  
+  // Move to Discovery
+  const discoveryColumn = page.getByTestId("column-col-discovery");
+  const discoveryBox = await discoveryColumn.boundingBox();
+  const cardBox = await card.boundingBox();
+  if (!cardBox || !discoveryBox) throw new Error("Box not found");
+
+  await page.mouse.move(cardBox.x + cardBox.width / 2, cardBox.y + cardBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(discoveryBox.x + discoveryBox.width / 2, discoveryBox.y + 120, { steps: 12 });
+  await page.mouse.up();
+  await expect(discoveryColumn.getByTestId("card-card-1")).toBeVisible();
+
+  // SMALL DELAY
+  await page.waitForTimeout(500);
+
+  // Move to Review
+  const reviewColumn = page.getByTestId("column-col-review");
+  const reviewBox = await reviewColumn.boundingBox();
+  const newCardBox = await page.getByTestId("card-card-1").boundingBox();
+  if (!newCardBox || !reviewBox) throw new Error("Box not found");
+
+  await page.mouse.move(newCardBox.x + newCardBox.width / 2, newCardBox.y + newCardBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(reviewBox.x + reviewBox.width / 2, reviewBox.y + 120, { steps: 12 });
+  await page.mouse.up();
+  await expect(reviewColumn.getByTestId("card-card-1")).toBeVisible();
 });
 

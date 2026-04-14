@@ -2,6 +2,7 @@ import os
 import time
 import random
 import string
+import httpx
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 
@@ -20,6 +21,7 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY", "default_secret_key_for_dev_only")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/token")
 
@@ -41,6 +43,7 @@ app = FastAPI(
 | `GET  /api/board` | Fetch the **entire** board (all columns + cards) |
 | `PUT  /api/board` | Replace the **entire** board state (used by the frontend after every drag/rename/delete) |
 | `POST /api/board/cards` | Add a **single** card to a column — ID is auto-generated |
+| `GET  /api/ai/test` | Test OpenRouter AI connectivity (asks 2+2) |
 | `GET  /api/health` | Health check |
 """,
     version="0.1.0",
@@ -241,6 +244,38 @@ def add_card(req: NewCardRequest, current_user: Annotated[User, Depends(get_curr
 
     update_board_for_user(current_user.username, board)
     return new_card
+
+
+@app.get(
+    "/api/ai/test",
+    tags=["AI"],
+    summary="Test AI connectivity",
+    description="Asks OpenRouter (GPT-3.5) 'What is 2+2?' to verify API key and connectivity.",
+)
+async def test_ai_connectivity():
+    if not OPENROUTER_API_KEY:
+        raise HTTPException(status_code=500, detail="OPENROUTER_API_KEY not set")
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "openai/gpt-3.5-turbo",
+                    "messages": [{"role": "user", "content": "What is 2+2? Respond with just the number."}],
+                },
+                timeout=10.0
+            )
+            response.raise_for_status()
+            data = response.json()
+            answer = data["choices"][0]["message"]["content"].strip()
+            return {"status": "success", "answer": answer}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"OpenRouter call failed: {str(e)}")
 
 # ---------------------------------------------------------------------------
 # Static file serving (Next.js frontend)
