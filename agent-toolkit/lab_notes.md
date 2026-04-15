@@ -1,7 +1,7 @@
 # Agentic Lab Notes
 
-## Tooling & Configs
-> **Tip:** Keep your environment variables in a `.env.example` to avoid leaking keys.
+## Development Environment & Context
+This section outlines the configurations for local LLMs, containerization, and the foundational environment used for this project.
 
 ### Local LLM Setup (Ollama | Openrouter)
 To configure Claude Code for Kimi K2.5 via OpenRouter :

@@ -47,6 +47,18 @@ A working MVP of the frontend has been built and is already in frontend. This is
 3. Be concise. Keep README minimal. IMPORTANT: no emojis ever
 4. When hitting issues, always identify root cause before trying a fix. Do not guess. Prove with evidence, then fix the root cause.
 
+# Agentic Sandbox Rules
+- **Scope:** You are restricted to `~/workspace/agentic-sandbox/`. 
+- **Exclusion:** Always respect `.aiexclude` patterns at the root.
+- **Security:** Do not attempt to access environment variables starting with `SLALOM_`.
+- **Pre-flight:** Before executing any shell script you generate, run `ls -la` to verify the target exists.
+- **Git:** 
+    - Always create a new branch `agent-edits` before making broad changes. 
+    - Delete the branch once it is merged with dev/main
+    - DO NOT commit/push changes unless explicitly asked
+    - Use 'commit' as command to commit changes and 'commit/push' as command to commit and push changes
+
+
 ## Working documentation
 
 All documents for planning and executing this project will be in the docs/ directory.

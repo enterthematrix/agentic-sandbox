@@ -1,0 +1,25 @@
+# Master AI Ignore List
+.git/
+node_modules/
+**/node_modules/
+target/           # Rust build artifacts
+.venv/            # Python environments
+**/__pycache__/   # Python byte code
+.pytest_cache/    # Python test cache
+.ruff_cache/      # Ruff linter cache
+*.log
+*.parquet         # Massive data files
+.env*             # Secrets
+/data/raw/        # Raw engineering data
+
+# Frontend Build & Cache
+.next/            # Next.js build output
+out/              # Next.js static export
+.swc/             # SWC compiler cache
+test-results/     # Playwright/Vitest artifacts
+playwright-report/
+
+# OS & IDE
+.DS_Store
+.vscode/
+.idea/

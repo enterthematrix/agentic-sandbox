@@ -1,0 +1,3 @@
+# Local AI-specific ignore files (symlinked to .aiexclude)
+.geminiignore
+.claudeignore

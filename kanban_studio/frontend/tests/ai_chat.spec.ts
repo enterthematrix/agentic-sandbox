@@ -32,5 +32,5 @@ test("opens the chat sidebar and sends a message to update the board", async ({ 
   
   // Verify card is on the board in the correct column
   const backlogColumn = page.getByTestId("column-col-backlog");
-  await expect(backlogColumn.getByText(uniqueTask)).toBeVisible({ timeout: 60000 });
+  await expect(backlogColumn.getByRole("heading", { name: uniqueTask })).toBeVisible({ timeout: 60000 });
 });
