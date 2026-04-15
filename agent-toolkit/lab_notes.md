@@ -27,6 +27,31 @@ ollama pull gpt-oss
 claude --model gpt-oss
 ```
 
+### AI Ignore List (.aiexclude)
+To avoid the agent scanning large build artifacts and irrelevant directories on restarts, we use a master `.aiexclude` file at the root.
+
+**1. Create/Update `.aiexclude`:**
+Ensure standard build artifacts, caches, and environment folders are listed.
+
+**2. Create Local Symlinks:**
+Since different agents use different ignore files (e.g., Gemini CLI uses `.geminiignore`), create symlinks to the source of truth:
+```bash
+ln -s .aiexclude .geminiignore
+ln -s .aiexclude .claudeignore
+```
+
+**3. Configure Global Settings:**
+Update your global `~/.gemini/settings.json` to explicitly respect `.aiexclude`:
+```json
+{
+  "context": {
+    "fileFiltering": {
+      "customIgnoreFilePaths": [".aiexclude"]
+    }
+  }
+}
+```
+
 ### Docker & Colima (macOS)
 Lightweight, CLI-first Docker environment for macOS, optimized for Apple Silicon.
 
