@@ -57,4 +57,4 @@ To completely remove the sandbox and all associated Docker/Colima artifacts:
 If you add new `export` or `alias` lines to your host `~/.zshrc` and want them available in the sandbox, re-run the `setup_sandbox.sh` script to update the environment snapshot.
 
 ## 📜 Documentation
-For technical details and implementation requirements, see [sandbox.md](./sandbox.md).
+For technical details and implementation requirements, see [sandbox.md](./sandbox.md). This is also the blueprint used to build the scripts for the sandbox
