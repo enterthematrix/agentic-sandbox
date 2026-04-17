@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# cleanup_sandbox.sh - Remove all sandbox artifacts for a clean start
+# Targeted for macOS
+
+set -e
+
+echo "Cleaning up sandbox environment..."
+
+# 1. Remove sandboxes
+echo "Removing sandboxes (dune and agentic-prime)..."
+sbx rm dune 2>/dev/null || true
+sbx rm agentic-prime 2>/dev/null || true
+
+# 2. Stop and delete Colima
+echo "Deleting Colima environment..."
+colima stop 2>/dev/null || true
+colima delete -f 2>/dev/null || true
+
+# 3. Clean local Docker config if needed (optional, but keeps it thorough)
+echo "Resetting Docker context..."
+docker context use default 2>/dev/null || true
+
+echo "Cleanup complete. You are ready for a fresh install."
