@@ -102,10 +102,14 @@ inject_file_raw() {
     local target=$1
     local source=$2
     if [ -f "$source" ]; then
-        local content=$(cat "$source")
-        sbx_exec "cat > $target <<'EOF'
-$content
-EOF" "Injecting $(basename "$source")"
+        local base64_content=$(base64 < "$source")
+        sbx_exec "echo '$base64_content' | base64 -d > $target" "Injecting $(basename "$source")"
+
+        # Verify file was actually copied
+        if ! sbx_exec "test -f $target" "Verifying $(basename "$source") exists"; then
+            echo "ERROR: Failed to inject $source to $target"
+            return 1
+        fi
     fi
 }
 
@@ -164,31 +168,46 @@ sbx_exec "rm -rf ~/.oh-my-zsh/custom/themes/powerlevel10k && git clone -c http.s
 
 # 9. Create .zshrc
 sbx_exec "cat > ~/.zshrc <<'EOF'
-# 1. Start in HOME
+# 1. Force proper terminal with full color support
+export TERM=xterm-256color
+export COLORTERM=truecolor
+
+# 2. Start in HOME
 cd \$HOME
 
-# 2. Source Host Environment Snapshot
+# 3. Source Host Environment Snapshot
 [ -f \"$HOST_ENV_FILE\" ] && source \"$HOST_ENV_FILE\"
 
-# 3. P10K Instant Prompt
+# 4. Enable color output for common commands
+export CLICOLOR=1
+export LS_COLORS='di=34:ln=35:so=32:pi=33:ex=31:bd=34;46:cd=34;43:su=30;41:sg=30;46:tw=30;42:ow=30;43'
+alias ls='ls --color=auto'
+alias grep='grep --color=auto'
+alias diff='diff --color=auto'
+
+# 5. P10K Instant Prompt (with gitstatus disabled for exec compatibility)
 if [[ -r \"\${XDG_CACHE_HOME:-\$HOME/.cache}/p10k-instant-prompt-\${(%):-%n}.zsh\" ]]; then
   source \"\${XDG_CACHE_HOME:-\$HOME/.cache}/p10k-instant-prompt-\${(%):-%n}.zsh\"
 fi
 
-# 4. OMZ Setup
+# 6. OMZ Setup
 export ZSH=\"\$HOME/.oh-my-zsh\"
 ZSH_THEME=\"powerlevel10k/powerlevel10k\"
-plugins=(git)
+plugins=(git colored-man-pages)
+DISABLE_AUTO_UPDATE=true
 source \$ZSH/oh-my-zsh.sh
 
-# 5. Aesthetics
+# 7. Aesthetics
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
-# 6. Critical Overrides
+# 8. Critical Overrides
 export SHELL=/usr/bin/zsh
 export AWS_SDK_LOAD_CONFIG=1
 export AWS_PROFILE='$AWS_PROFILE'
 export PATH=\$HOME/.local/bin:\$PATH
+
+# 9. Force colorized prompt even in non-interactive mode
+autoload -U colors && colors
 EOF" "Configuring .zshrc"
 
 sbx_exec "sudo usermod -s /usr/bin/zsh agent" "Setting default shell"
