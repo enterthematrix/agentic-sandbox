@@ -85,6 +85,7 @@ echo "Setting network policy to 'balanced'..."
 sbx policy set-default balanced || true
 
 # 8. Robust Execution Helper
+# Handles transient "container not ready" errors with retries
 sbx_exec() {
     local cmd=$1
     local msg=$2
@@ -153,9 +154,14 @@ inject_file_raw "/home/agent/.ssh/id_rsa.pub" "$HOME/.ssh/id_rsa.pub"
 # P10K Mirroring
 inject_file_raw "/home/agent/.p10k.zsh" "$HOME/.p10k.zsh"
 
-# 11. Hyper-Sequential Guest Provisioning
-echo "Provisioning internal environment..."
+# AWS Config Mirroring (Required for named profile discovery)
+sbx_exec "mkdir -p /home/agent/.aws" "Creating .aws directory"
+inject_file_raw "/home/agent/.aws/config" "$HOME/.aws/config"
 
+# 11. Hyper-Sequential Guest Provisioning
+echo "Provisioning internal environment (Sequential/Memory-Safe)..."
+
+# Core Tools
 sbx_exec "sudo apt-get update -qq || true" "Updating package lists"
 for pkg in zsh git nodejs npm ca-certificates; do
     sbx_exec "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq $pkg && sudo apt-get clean" "Installing $pkg"
@@ -197,6 +203,7 @@ source \$ZSH/oh-my-zsh.sh
 source ~/powerlevel10k/powerlevel10k.zsh-theme
 
 # AWS Identity
+export AWS_PROFILE='$AWS_PROFILE'
 export AWS_REGION='$AWS_REGION'
 
 # Senior Aliases

@@ -8,9 +8,8 @@ set -e
 echo "Cleaning up sandbox environment..."
 
 # 1. Remove sandboxes
-echo "Removing sandboxes (dune and agentic-prime)..."
+echo "Removing sandboxes (dune)..."
 sbx rm dune 2>/dev/null || true
-sbx rm agentic-prime 2>/dev/null || true
 
 # 2. Stop and delete Colima
 echo "Deleting Colima environment..."
