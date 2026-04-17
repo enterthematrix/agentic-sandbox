@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# cleanup_sandbox.sh - Remove all sandbox artifacts for a clean start
-# Targeted for macOS
+# cleanup_sandbox.sh - Remove all sandbox artifacts(including docker/colima) for a clean start
 
 set -e
 
