@@ -14,7 +14,7 @@ Establish a high-performance, MicroVM-isolated development environment (`sbx`) t
 
 | Component | Selection | Rationale |
 | :--- | :--- | :--- |
-| **Engine** | `sbx` (Claude Agent) | Pre-configured for Claude Code; hardened and optimized. |
+| **Engine** | `sbx` (Shell Agent) | Provides a raw terminal for full control; mirrors Mac-like ZSH experience. |
 | **Isolation** | **MicroVM** (vz-rosetta) | Hardware-assisted virtualization for superior security and performance. |
 | **Shell** | **ZSH + OMZ + P10K** | Industry-standard terminal experience for productivity and clarity. |
 | **Package Mgr** | **Flox + uv + npm** | Hybrid approach for declarative toolchains and modern speed. |

@@ -2,7 +2,7 @@
 
 # setup_sandbox.sh - Comprehensive "Dune" Sandbox Provisioning (Pro)
 # Optimized for macOS, team portability, full isolation, and senior shell UX.
-# Achievement: Full host isolation, Mac-like UX, and Claude-optimized base.
+# Achievement: Full host isolation, Mac-like terminal UX, and robust toolchain.
 
 set -e
 
@@ -11,7 +11,7 @@ SANDBOX_NAME="dune"
 WORKSPACE_DIR=$(pwd)
 ISOLATION_BRANCH="agent-work"
 
-echo "Starting Comprehensive 'Dune' Sandbox Setup (Claude Optimized)..."
+echo "Starting Comprehensive 'Dune' Sandbox Setup..."
 
 # 1. OS Check
 if [[ "$OSTYPE" != "darwin"* ]]; then
@@ -49,33 +49,33 @@ if ! colima status &> /dev/null; then
 fi
 docker context use colima &> /dev/null
 
-# 5. Sandbox Creation (Claude Agent + Native Branch Isolation + Resource Limits)
-echo "Initializing '$SANDBOX_NAME' sandbox (Agent: claude, Branch: $ISOLATION_BRANCH)..."
+# 5. Sandbox Creation (Shell Agent + Native Branch Isolation + Resource Limits)
+echo "Initializing '$SANDBOX_NAME' sandbox (Agent: shell, Branch: $ISOLATION_BRANCH)..."
 if ! sbx ls | grep -q "$SANDBOX_NAME"; then
-    # Using 'claude' agent for optimized Claude Code experiments
-    sbx create --name "$SANDBOX_NAME" --branch "$ISOLATION_BRANCH" --memory 8g --cpus 4 claude "$WORKSPACE_DIR" || \
-    sbx create --name "$SANDBOX_NAME" --memory 8g --cpus 4 claude "$WORKSPACE_DIR"
+    # We use 'shell' agent to ensure a Mac-like raw terminal entry
+    sbx create --name "$SANDBOX_NAME" --branch "$ISOLATION_BRANCH" --memory 8g --cpus 4 shell "$WORKSPACE_DIR" || \
+    sbx create --name "$SANDBOX_NAME" --memory 8g --cpus 4 shell "$WORKSPACE_DIR"
 fi
 
-# 6. Secret Management (Secure Injection)
+# 6. Secret Management (Internal & External Proxy)
 echo "Injecting secrets into 'sbx' manager..."
 
-# AWS Credentials extraction
+# AWS Credentials extraction for secure injection
 if [ -f ~/.aws/credentials ]; then
     AWS_KEY=$(grep -A 5 "\[$AWS_PROFILE\]" ~/.aws/credentials | grep aws_access_key_id | cut -d'=' -f2 | xargs)
     AWS_SECRET=$(grep -A 5 "\[$AWS_PROFILE\]" ~/.aws/credentials | grep aws_secret_access_key | cut -d'=' -f2 | xargs)
     
     if [ -n "$AWS_KEY" ] && [ -n "$AWS_SECRET" ]; then
-        echo "  - Mirroring AWS keys to sbx secrets..."
+        echo "  - Registering AWS keys to sbx secrets..."
         echo "AWS_ACCESS_KEY_ID=$AWS_KEY AWS_SECRET_ACCESS_KEY=$AWS_SECRET" | sbx secret set "$SANDBOX_NAME" aws
     fi
 fi
 
-# OpenRouter Key (if exists in env)
+# OpenRouter Key
 if [ -f .env ]; then
     OR_KEY=$(grep OPENROUTER_API_KEY .env | cut -d'=' -f2 | xargs)
     if [ -n "$OR_KEY" ]; then
-        echo "  - Mirroring OpenRouter key to sbx secrets..."
+        echo "  - Registering OpenRouter key to sbx secrets..."
         echo "$OR_KEY" | sbx secret set "$SANDBOX_NAME" google
     fi
 fi
@@ -154,9 +154,19 @@ inject_file_raw "/home/agent/.ssh/id_rsa.pub" "$HOME/.ssh/id_rsa.pub"
 # P10K Mirroring
 inject_file_raw "/home/agent/.p10k.zsh" "$HOME/.p10k.zsh"
 
-# AWS Config Mirroring (Required for named profile discovery)
+# AWS Mirroring (Full mirroring of config/credentials for reliable CLI login)
 sbx_exec "mkdir -p /home/agent/.aws" "Creating .aws directory"
 inject_file_raw "/home/agent/.aws/config" "$HOME/.aws/config"
+
+# We mirror only the specific profile to credentials file for security
+if [ -f ~/.aws/credentials ]; then
+    echo "  - Mirroring AWS credentials for profile: $AWS_PROFILE..."
+    # Extract the block for the specific profile
+    CREDS_BLOCK=$(awk "/^\[$AWS_PROFILE\]/,/^$/ {print}" ~/.aws/credentials)
+    sbx_exec "cat > /home/agent/.aws/credentials <<'EOF'
+$CREDS_BLOCK
+EOF" ""
+fi
 
 # 11. Hyper-Sequential Guest Provisioning
 echo "Provisioning internal environment (Sequential/Memory-Safe)..."
@@ -177,7 +187,7 @@ sbx_exec "bash -c 'echo \"N\" | sudo dpkg --configure -a'" "Finalizing package c
 sbx_exec "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq gh ripgrep jq just && sudo apt-get clean" "Installing gh, rg, jq, just"
 sbx_exec "curl -k -LsSf https://astral.sh/uv/install.sh | sh" "Installing uv"
 
-# Agentic CLIs (Ensuring both Gemini and Claude are present)
+# Agentic CLIs
 sbx_exec "sudo npm install -g -qq --no-fund --no-audit @google/gemini-cli" "Installing Gemini CLI"
 sbx_exec "sudo npm install -g -qq --no-fund --no-audit @anthropic-ai/claude-code" "Installing Claude CLI"
 
@@ -255,9 +265,8 @@ fi
 " "Configuring ignore symlinks"
 
 echo "--------------------------------------------------"
-echo "Setup Complete! Your Claude-Optimized 'Dune' sandbox is ready."
+echo "Setup Complete! Your 'Dune' sandbox is ready."
+echo "UX: Senior Mac-tier (ZSH default, starts in HOME)"
 echo "Isolation: FULL (Branch-based Worktree)"
-echo "UX: Senior Mac-tier (ZSH + P10K mirrored)"
-echo "Security: Balanced Network Policy + SBX Secrets"
 echo "👉 To enter the sandbox: sbx run $SANDBOX_NAME"
 echo "--------------------------------------------------"
