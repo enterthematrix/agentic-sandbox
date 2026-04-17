@@ -11,7 +11,7 @@
 - **Security:** Do not attempt to access environment variables starting with `SLALOM_`.
 - **Pre-flight:** Before executing any shell script you generate, run `ls -la` to verify the target exists.
 - **Git:** 
-    - Always create a new branch `agent-edits` before making broad changes. 
+    - Always create a new branch `agent-smith` before making broad changes. 
     - Delete the branch once it is merged with dev/main
     - DO NOT commit/push changes unless explicitly asked
     - Use 'commit' as command to commit changes and 'commit/push' as command to commit and push changes

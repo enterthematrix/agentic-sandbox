@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# setup_sandbox.sh - Pro "Dune" Sandbox (Host-Synced & Fully Isolated)
+# setup_sandbox.sh - "Dune" Sandbox (Host-Synced & Fully Isolated)
 # Strategy: Host is the Source of Truth (Live Mounts) + Internal Isolated Workspace.
 
 set -e
@@ -12,7 +12,7 @@ HOST_DECOY_DIR=$(mktemp -d -t dune-isolation-XXXXXX)
 # Path to store the host environment snapshot
 HOST_ENV_FILE="$HOST_DECOY_DIR/.host_env"
 
-echo "Starting 'Dune' Pro Setup (Seamless Host Integration)..."
+echo "Starting 'Dune' Setup (Seamless Host Integration)..."
 
 # 1. Host Pre-flight
 echo "Ensuring host dependencies..."
@@ -28,8 +28,8 @@ docker context use colima &> /dev/null
 
 # 3. Environment Extraction (Live Sync Feature)
 echo "Capturing host environment variables from ~/.zshrc..."
-# We extract all lines that look like 'export VAR=VAL' and 'alias'
-# We filter out Mac-only stuff that might break Linux (like brew shellenv or specific Darwin paths)
+# extract all lines that look like 'export VAR=VAL' and 'alias'
+# filter out Mac-only stuff that might break Linux (like brew shellenv or specific Darwin paths)
 grep -E "^export |^alias " ~/.zshrc | grep -v "eval \"\$(brew shellenv)\"" > "$HOST_ENV_FILE" || true
 echo "export PATH=\$PATH:/opt/homebrew/bin:/usr/local/bin" >> "$HOST_ENV_FILE"
 
@@ -176,10 +176,6 @@ sbx_exec "echo 'exec zsh -l' > ~/.bash_profile" "Configuring bash_profile"
 sbx_exec "mkdir -p ~/workspace" "Creating isolated ~/workspace"
 
 echo "--------------------------------------------------"
-echo "Setup Complete! Your 'Dune' Pro sandbox is ready."
-echo "Strategy: Seamless Sync (Host as Source of Truth)"
-echo "Live Sync: AWS & SSH Directories"
-echo "Env Sync: Host ~/.zshrc variables mirrored"
-echo "Aesthetics: Mirrored P10K settings"
+echo "Setup Complete! Your 'Dune' sandbox is ready."
 echo "👉 To enter: sbx run dune"
 echo "--------------------------------------------------"
