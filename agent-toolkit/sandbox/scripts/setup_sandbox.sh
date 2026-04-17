@@ -1,9 +1,17 @@
 #!/bin/bash
 
 # setup_sandbox.sh - Pro "Dune" Sandbox (Host-Synced & Fully Isolated)
-# Strategy: Host is the Source of Truth (Live Mounts) + Internal Isolated Workspace.
+# Strategy: Hybrid Identity (Mounts for Dir, Copies for Config) + Isolated Workspace.
 
 set -e
+
+# Mirror AWS Profile choice
+if [ -t 0 ]; then
+    read -p "Enter AWS Profile to default to [slalom_aws]: " AWS_PROFILE
+    AWS_PROFILE=${AWS_PROFILE:-slalom_aws}
+else
+    AWS_PROFILE="slalom_aws"
+fi
 
 # Configuration
 SANDBOX_NAME="dune"
@@ -26,22 +34,19 @@ if ! colima status &> /dev/null; then
 fi
 docker context use colima &> /dev/null
 
-# 3. Environment Extraction (Snapshot Sync)
+# 3. Environment Extraction
 echo "Capturing host environment variables from ~/.zshrc..."
 grep -E "^export |^alias " ~/.zshrc | grep -v "eval \"\$(brew shellenv)\"" > "$HOST_ENV_FILE" || true
 echo "export PATH=\$PATH:/opt/homebrew/bin:/usr/local/bin" >> "$HOST_ENV_FILE"
 
-# 4. Sandbox Creation (Directory Mounts)
+# 4. Sandbox Creation
 if sbx ls | grep -q "$SANDBOX_NAME"; then
     echo "Sandbox '$SANDBOX_NAME' exists. Re-provisioning..."
 else
-    echo "Creating isolated sandbox '$SANDBOX_NAME' with Live Host Sync..."
-    # Mounting DIRECTORIES is most reliable in sbx. 
-    # Individual files will be injected manually.
+    echo "Creating isolated sandbox '$SANDBOX_NAME'..."
     sbx create --name "$SANDBOX_NAME" --memory 8g --cpus 4 shell \
         "$HOST_DECOY_DIR" \
-        "$HOME/.aws:ro" \
-        "$HOME/.ssh:ro"
+        "$HOME/.aws:ro"
 fi
 
 # 5. Robust Execution Helper
@@ -90,7 +95,7 @@ s=\$?; sync; exit \$s" 2>$tmp_err; then
 # 6. Warm-up
 sbx_exec "true" "Initializing Docker daemon"
 
-# 7. Identity & Aesthetics (Live Symlinks + Injections)
+# 7. Identity & Aesthetics (Optimized for SSH reliability)
 echo "Synchronizing identity and aesthetics with host..."
 
 inject_file_raw() {
@@ -104,26 +109,48 @@ EOF" "Injecting $(basename "$source")"
     fi
 }
 
-# Live Sync for directories
+# Live Sync for AWS
 sbx_exec "rm -rf ~/.aws && ln -s \"$HOME/.aws\" ~/.aws" "Linking .aws (Live Sync)"
-sbx_exec "rm -rf ~/.ssh && ln -s \"$HOME/.ssh\" ~/.ssh" "Linking .ssh (Live Sync)"
 
-# Static Mirroring for files
+
+# PROPER SSH FIX: Copy keys but create a custom Sandbox config
+sbx_exec "mkdir -p ~/.ssh && chmod 700 ~/.ssh" "Preparing SSH directory"
+if [ -f ~/.ssh/id_ed25519 ]; then
+    inject_file_raw "/home/agent/.ssh/id_ed25519" "$HOME/.ssh/id_ed25519"
+    sbx_exec "chmod 600 ~/.ssh/id_ed25519" "Securing private key"
+
+    # Verify key was actually copied
+    if ! sbx_exec "test -f ~/.ssh/id_ed25519" "Verifying private key exists"; then
+        echo "ERROR: Failed to copy SSH private key to sandbox"
+        exit 1
+    fi
+fi
+[ -f ~/.ssh/id_ed25519.pub ] && inject_file_raw "/home/agent/.ssh/id_ed25519.pub" "$HOME/.ssh/id_ed25519.pub"
+
+# Create Sandbox-optimized SSH config (Using Port 443 fallback for reliability)
+sbx_exec "cat > ~/.ssh/config <<'EOF'
+Host github.com
+    Hostname ssh.github.com
+    Port 443
+    User git
+    IdentityFile ~/.ssh/id_ed25519
+    StrictHostKeyChecking no
+EOF" "Creating optimized SSH config"
+
+# Verify SSH config was created
+if ! sbx_exec "test -f ~/.ssh/config" "Verifying SSH config exists"; then
+    echo "ERROR: Failed to create SSH config in sandbox"
+    exit 1
+fi
+
+# Identity & Aesthetics
 inject_file_raw "/home/agent/.gitconfig" "$HOME/.gitconfig"
 inject_file_raw "/home/agent/.p10k.zsh" "$HOME/.p10k.zsh"
 
-# Mirror AWS Profile choice for environment setup
-if [ -t 0 ]; then
-    read -p "Enter AWS Profile to default to [slalom_aws]: " AWS_PROFILE
-    AWS_PROFILE=${AWS_PROFILE:-slalom_aws}
-else
-    AWS_PROFILE="slalom_aws"
-fi
-
 # 8. Guest Provisioning
-echo "Provisioning internal environment (Sequential)..."
+echo "Provisioning internal environment..."
 sbx_exec "sudo apt-get update -qq" "Updating package lists"
-for pkg in zsh git nodejs npm ca-certificates gh ripgrep jq just; do
+for pkg in zsh git openssh-client nodejs npm ca-certificates gh ripgrep jq just; do
     sbx_exec "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq $pkg && sudo apt-get clean" "Installing $pkg"
 done
 
@@ -131,16 +158,16 @@ sbx_exec "curl -k -LsSf https://astral.sh/uv/install.sh | sh" "Installing uv"
 sbx_exec "sudo rm -rf /usr/local/lib/node_modules/@google/gemini-cli /usr/local/lib/node_modules/@anthropic-ai/claude-code" "Cleaning stale CLIs"
 sbx_exec "sudo npm install -g -qq --no-fund --no-audit @google/gemini-cli @anthropic-ai/claude-code" "Installing CLIs"
 
-# Shell Dirs
+# Shell Dirs (IDEMPOTENT FIX)
 sbx_exec "rm -rf ~/.oh-my-zsh && git clone -c http.sslVerify=false --depth=1 https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh" "Installing Oh My Zsh"
 sbx_exec "rm -rf ~/.oh-my-zsh/custom/themes/powerlevel10k && git clone -c http.sslVerify=false --depth=1 https://github.com/romkatv/powerlevel10k.git ~/.oh-my-zsh/custom/themes/powerlevel10k" "Installing Powerlevel10k"
 
-# 9. Create .zshrc (The Seamless Connector)
+# 9. Create .zshrc
 sbx_exec "cat > ~/.zshrc <<'EOF'
 # 1. Start in HOME
 cd \$HOME
 
-# 2. Source Host Environment Snapshot (Snapshot Sync)
+# 2. Source Host Environment Snapshot
 [ -f \"$HOST_ENV_FILE\" ] && source \"$HOST_ENV_FILE\"
 
 # 3. P10K Instant Prompt
@@ -154,7 +181,7 @@ ZSH_THEME=\"powerlevel10k/powerlevel10k\"
 plugins=(git)
 source \$ZSH/oh-my-zsh.sh
 
-# 5. Aesthetics (Mirrored from Host)
+# 5. Aesthetics
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
 # 6. Critical Overrides
@@ -164,14 +191,52 @@ export AWS_PROFILE='$AWS_PROFILE'
 export PATH=\$HOME/.local/bin:\$PATH
 EOF" "Configuring .zshrc"
 
-# Ensure ZSH is the default entry point
 sbx_exec "sudo usermod -s /usr/bin/zsh agent" "Setting default shell"
 sbx_exec "echo 'exec zsh -l' > ~/.bash_profile" "Configuring bash_profile"
-
-# 10. Workspace Creation
 sbx_exec "mkdir -p ~/workspace" "Creating isolated ~/workspace"
 
+# 10. Post-Setup Validation
+echo "Running post-setup validation..."
+
+# Test SSH connectivity to GitHub
+echo "  - Testing SSH connection to GitHub..."
+if sbx_exec "ssh -T git@github.com 2>&1 | grep -q 'successfully authenticated'" "Validating GitHub SSH"; then
+    SSH_STATUS="✓ WORKING"
+else
+    echo "ERROR: SSH authentication to GitHub failed"
+    echo "Run 'sbx exec dune -- ssh -T git@github.com' to debug"
+    SSH_STATUS="✗ FAILED"
+fi
+
+# Test git clone capability
+echo "  - Testing git clone functionality..."
+if sbx_exec "cd /tmp && rm -rf test-clone && git clone --depth 1 git@github.com:enterthematrix/agentic-sandbox.git test-clone && rm -rf test-clone" "Testing git clone"; then
+    GIT_STATUS="✓ WORKING"
+else
+    echo "ERROR: Git clone failed"
+    echo "Run 'sbx exec dune -- git clone git@github.com:enterthematrix/agentic-sandbox.git /tmp/test' to debug"
+    GIT_STATUS="✗ FAILED"
+fi
+
+# Test AWS credentials
+echo "  - Testing AWS credentials..."
+if sbx_exec "aws sts get-caller-identity --profile $AWS_PROFILE > /dev/null 2>&1" "Validating AWS credentials"; then
+    AWS_STATUS="✓ WORKING (Profile: $AWS_PROFILE)"
+else
+    AWS_STATUS="⚠ NOT CONFIGURED or expired (Profile: $AWS_PROFILE)"
+fi
+
 echo "--------------------------------------------------"
-echo "Setup Complete! sandbox is ready."
+echo "Setup Complete! Validation Results:"
+echo "  SSH:   $SSH_STATUS"
+echo "  Git:   $GIT_STATUS"
+echo "  AWS:   $AWS_STATUS"
+echo ""
 echo "👉 To enter: sbx run dune"
 echo "--------------------------------------------------"
+
+# Exit with error if critical services failed
+if [[ "$SSH_STATUS" == *"FAILED"* ]] || [[ "$GIT_STATUS" == *"FAILED"* ]]; then
+    echo "ERROR: Critical validation failed. Please review errors above."
+    exit 1
+fi
