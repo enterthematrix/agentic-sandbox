@@ -2,6 +2,7 @@
 
 # setup_sandbox.sh - Comprehensive "Dune" Sandbox Provisioning (Pro)
 # Optimized for macOS, team portability, full isolation, and senior shell UX.
+# Achievement: Full host isolation, Mac-like UX, and Claude-optimized base.
 
 set -e
 
@@ -10,7 +11,7 @@ SANDBOX_NAME="dune"
 WORKSPACE_DIR=$(pwd)
 ISOLATION_BRANCH="agent-work"
 
-echo "Starting Comprehensive 'Dune' Sandbox Setup..."
+echo "Starting Comprehensive 'Dune' Sandbox Setup (Claude Optimized)..."
 
 # 1. OS Check
 if [[ "$OSTYPE" != "darwin"* ]]; then
@@ -48,14 +49,12 @@ if ! colima status &> /dev/null; then
 fi
 docker context use colima &> /dev/null
 
-# 5. Sandbox Creation (Native Branch Isolation + Resource Limits)
-echo "Initializing '$SANDBOX_NAME' sandbox (Isolation Branch: $ISOLATION_BRANCH)..."
+# 5. Sandbox Creation (Claude Agent + Native Branch Isolation + Resource Limits)
+echo "Initializing '$SANDBOX_NAME' sandbox (Agent: claude, Branch: $ISOLATION_BRANCH)..."
 if ! sbx ls | grep -q "$SANDBOX_NAME"; then
-    # --branch creates a native Git worktree isolation in .sbx/
-    # --memory and --cpus ensure stability
-    # If branch fails (e.g. branch exists), sbx falls back to direct mount.
-    sbx create --name "$SANDBOX_NAME" --branch "$ISOLATION_BRANCH" --memory 8g --cpus 4 shell "$WORKSPACE_DIR" || \
-    sbx create --name "$SANDBOX_NAME" --memory 8g --cpus 4 shell "$WORKSPACE_DIR"
+    # Using 'claude' agent for optimized Claude Code experiments
+    sbx create --name "$SANDBOX_NAME" --branch "$ISOLATION_BRANCH" --memory 8g --cpus 4 claude "$WORKSPACE_DIR" || \
+    sbx create --name "$SANDBOX_NAME" --memory 8g --cpus 4 claude "$WORKSPACE_DIR"
 fi
 
 # 6. Secret Management (Secure Injection)
@@ -86,7 +85,6 @@ echo "Setting network policy to 'balanced'..."
 sbx policy set-default balanced || true
 
 # 8. Robust Execution Helper
-# Handles transient "container not ready" errors with retries
 sbx_exec() {
     local cmd=$1
     local msg=$2
@@ -156,9 +154,8 @@ inject_file_raw "/home/agent/.ssh/id_rsa.pub" "$HOME/.ssh/id_rsa.pub"
 inject_file_raw "/home/agent/.p10k.zsh" "$HOME/.p10k.zsh"
 
 # 11. Hyper-Sequential Guest Provisioning
-echo "Provisioning internal environment (Sequential/Memory-Safe)..."
+echo "Provisioning internal environment..."
 
-# Core Tools
 sbx_exec "sudo apt-get update -qq || true" "Updating package lists"
 for pkg in zsh git nodejs npm ca-certificates; do
     sbx_exec "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq $pkg && sudo apt-get clean" "Installing $pkg"
@@ -174,7 +171,7 @@ sbx_exec "bash -c 'echo \"N\" | sudo dpkg --configure -a'" "Finalizing package c
 sbx_exec "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq gh ripgrep jq just && sudo apt-get clean" "Installing gh, rg, jq, just"
 sbx_exec "curl -k -LsSf https://astral.sh/uv/install.sh | sh" "Installing uv"
 
-# Agentic CLIs
+# Agentic CLIs (Ensuring both Gemini and Claude are present)
 sbx_exec "sudo npm install -g -qq --no-fund --no-audit @google/gemini-cli" "Installing Gemini CLI"
 sbx_exec "sudo npm install -g -qq --no-fund --no-audit @anthropic-ai/claude-code" "Installing Claude CLI"
 
@@ -199,7 +196,7 @@ source \$ZSH/oh-my-zsh.sh
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 source ~/powerlevel10k/powerlevel10k.zsh-theme
 
-# AWS Identity (Region only, keys come from sbx secrets)
+# AWS Identity
 export AWS_REGION='$AWS_REGION'
 
 # Senior Aliases
@@ -234,7 +231,6 @@ sb_user=$(sbx exec "$SANDBOX_NAME" -- whoami | head -n 1 | tr -d '\r')
 sbx_exec "sudo usermod -s /usr/bin/zsh $sb_user" "Setting ZSH as default shell"
 
 # 13. Workspace Standards
-# Find where the project root is mounted
 sbx_exec "
 ROOT_PATH=\$(find /home/agent/workspace -name .aiexclude -exec dirname {} \; | head -n 1)
 if [ -n \"\$ROOT_PATH\" ]; then
@@ -252,7 +248,7 @@ fi
 " "Configuring ignore symlinks"
 
 echo "--------------------------------------------------"
-echo "Setup Complete! Your Pro 'Dune' sandbox is ready."
+echo "Setup Complete! Your Claude-Optimized 'Dune' sandbox is ready."
 echo "Isolation: FULL (Branch-based Worktree)"
 echo "UX: Senior Mac-tier (ZSH + P10K mirrored)"
 echo "Security: Balanced Network Policy + SBX Secrets"
