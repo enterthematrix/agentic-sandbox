@@ -5,10 +5,10 @@ Establish a high-performance, MicroVM-isolated development environment (`sbx`) t
 
 ### Architectural Principles
 - **Host/Guest Isolation:** `sbx` (powered by Docker/Colima) provides the security boundary. The sandbox mounts a temporary empty directory to ensure no host files are accessible.
-- **Identity Mirroring:** Git credentials and SSH public keys are mirrored from the host to the guest `/home/agent` for seamless internal operations.
+- **Seamless Sync (Source of Truth):**
+    - **Live Sync:** Host `~/.aws`, `~/.ssh`, `~/.gitconfig`, and `~/.p10k.zsh` are bind-mounted (Read-Only) to ensure the sandbox always uses the latest host credentials and terminal aesthetics.
+    - **Snapshot Sync:** Host `~/.zshrc` exports and aliases are filtered and mirrored during setup to provide a compatible environment without Mac/Linux path conflicts.
 - **Senior-Tier UX:** ZSH with mirrored Powerlevel10k settings and senior Mac-like aliases minimize friction.
-- **Full Persistence:** Work done within the `/home/agent` directory (including clones and configurations) persists across sandbox stops and starts.
-- **Robust AWS Integration:** Live bind-mount of host `~/.aws:ro` ensures that the sandbox picks up updated tokens (e.g., from `aws-azure-login`) automatically with zero manual steps.
 
 ### Technical Stack
 

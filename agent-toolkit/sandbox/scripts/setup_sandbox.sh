@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# setup_sandbox.sh - "Dune" Sandbox (Host-Synced & Fully Isolated)
+# setup_sandbox.sh - Pro "Dune" Sandbox (Host-Synced & Fully Isolated)
 # Strategy: Host is the Source of Truth (Live Mounts) + Internal Isolated Workspace.
 
 set -e
@@ -12,7 +12,7 @@ HOST_DECOY_DIR=$(mktemp -d -t dune-isolation-XXXXXX)
 # Path to store the host environment snapshot
 HOST_ENV_FILE="$HOST_DECOY_DIR/.host_env"
 
-echo "Starting 'Dune' Setup (Seamless Host Integration)..."
+echo "Starting 'Dune' Pro Setup (Seamless Host Integration)..."
 
 # 1. Host Pre-flight
 echo "Ensuring host dependencies..."
@@ -26,20 +26,18 @@ if ! colima status &> /dev/null; then
 fi
 docker context use colima &> /dev/null
 
-# 3. Environment Extraction (Live Sync Feature)
+# 3. Environment Extraction (Snapshot Sync)
 echo "Capturing host environment variables from ~/.zshrc..."
-# extract all lines that look like 'export VAR=VAL' and 'alias'
-# filter out Mac-only stuff that might break Linux (like brew shellenv or specific Darwin paths)
 grep -E "^export |^alias " ~/.zshrc | grep -v "eval \"\$(brew shellenv)\"" > "$HOST_ENV_FILE" || true
 echo "export PATH=\$PATH:/opt/homebrew/bin:/usr/local/bin" >> "$HOST_ENV_FILE"
 
-# 4. Sandbox Creation (The Multi-Mount Shield)
+# 4. Sandbox Creation (Directory Mounts)
 if sbx ls | grep -q "$SANDBOX_NAME"; then
     echo "Sandbox '$SANDBOX_NAME' exists. Re-provisioning..."
 else
     echo "Creating isolated sandbox '$SANDBOX_NAME' with Live Host Sync..."
-    # sbx create works best mounting DIRECTORIES.
-    # Files (.gitconfig, .p10k.zsh) will be injected.
+    # Mounting DIRECTORIES is most reliable in sbx. 
+    # Individual files will be injected manually.
     sbx create --name "$SANDBOX_NAME" --memory 8g --cpus 4 shell \
         "$HOST_DECOY_DIR" \
         "$HOME/.aws:ro" \
@@ -73,7 +71,7 @@ s=\$?; sync; exit \$s" 2>$tmp_err; then
                 rm -f $tmp_err
             else
                 echo "    - Error executing command"
-                echo "    - Details: $err" >&2
+                echo "$err" >&2
                 rm -f $tmp_err
                 echo "    - General error, retrying in 5s... ($((retry_count+1))/$max_retries)"
                 sleep 5
@@ -92,7 +90,7 @@ s=\$?; sync; exit \$s" 2>$tmp_err; then
 # 6. Warm-up
 sbx_exec "true" "Initializing Docker daemon"
 
-# 7. Identity & Aesthetics (Hybrid Strategy)
+# 7. Identity & Aesthetics (Live Symlinks + Injections)
 echo "Synchronizing identity and aesthetics with host..."
 
 inject_file_raw() {
@@ -106,11 +104,11 @@ EOF" "Injecting $(basename "$source")"
     fi
 }
 
-# Directories (Live Symlinks to Mounts)
+# Live Sync for directories
 sbx_exec "rm -rf ~/.aws && ln -s \"$HOME/.aws\" ~/.aws" "Linking .aws (Live Sync)"
 sbx_exec "rm -rf ~/.ssh && ln -s \"$HOME/.ssh\" ~/.ssh" "Linking .ssh (Live Sync)"
 
-# Files (Static Injection - more reliable for individual files in sbx)
+# Static Mirroring for files
 inject_file_raw "/home/agent/.gitconfig" "$HOME/.gitconfig"
 inject_file_raw "/home/agent/.p10k.zsh" "$HOME/.p10k.zsh"
 
@@ -133,18 +131,16 @@ sbx_exec "curl -k -LsSf https://astral.sh/uv/install.sh | sh" "Installing uv"
 sbx_exec "sudo rm -rf /usr/local/lib/node_modules/@google/gemini-cli /usr/local/lib/node_modules/@anthropic-ai/claude-code" "Cleaning stale CLIs"
 sbx_exec "sudo npm install -g -qq --no-fund --no-audit @google/gemini-cli @anthropic-ai/claude-code" "Installing CLIs"
 
-# Shell Dirs (Indempotent clones)
+# Shell Dirs
 sbx_exec "rm -rf ~/.oh-my-zsh && git clone -c http.sslVerify=false --depth=1 https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh" "Installing Oh My Zsh"
 sbx_exec "rm -rf ~/.oh-my-zsh/custom/themes/powerlevel10k && git clone -c http.sslVerify=false --depth=1 https://github.com/romkatv/powerlevel10k.git ~/.oh-my-zsh/custom/themes/powerlevel10k" "Installing Powerlevel10k"
 
 # 9. Create .zshrc (The Seamless Connector)
-# We source the host environment snapshot and then set up the internal ZSH environment.
 sbx_exec "cat > ~/.zshrc <<'EOF'
 # 1. Start in HOME
 cd \$HOME
 
-# 2. Source Host Environment Snapshot (Live for this sandbox session)
-# This includes host variables and aliases from your Mac.
+# 2. Source Host Environment Snapshot (Snapshot Sync)
 [ -f \"$HOST_ENV_FILE\" ] && source \"$HOST_ENV_FILE\"
 
 # 3. P10K Instant Prompt
@@ -176,6 +172,6 @@ sbx_exec "echo 'exec zsh -l' > ~/.bash_profile" "Configuring bash_profile"
 sbx_exec "mkdir -p ~/workspace" "Creating isolated ~/workspace"
 
 echo "--------------------------------------------------"
-echo "Setup Complete! Your 'Dune' sandbox is ready."
+echo "Setup Complete! sandbox is ready."
 echo "👉 To enter: sbx run dune"
 echo "--------------------------------------------------"
