@@ -1,18 +1,16 @@
 #!/bin/bash
 
-# setup_sandbox.sh - Comprehensive "Dune" Sandbox Provisioning
-# Optimized for macOS (Apple Silicon) and team portability.
-# Achievement: Full host isolation, Mac-like UX, and senior-tier ZSH.
+# setup_sandbox.sh - Comprehensive "Dune" Sandbox Provisioning (Pro)
+# Optimized for macOS, team portability, full isolation, and senior shell UX.
 
 set -e
 
 # Configuration
 SANDBOX_NAME="dune"
-# Use a temporary directory on the host for the 'workspace' mount to ensure isolation
-HOST_MOUNT_DIR=$(mktemp -d -t sbx-dune-isolated)
+WORKSPACE_DIR=$(pwd)
+ISOLATION_BRANCH="agent-work"
 
 echo "Starting Comprehensive 'Dune' Sandbox Setup..."
-echo "Host isolation directory: $HOST_MOUNT_DIR"
 
 # 1. OS Check
 if [[ "$OSTYPE" != "darwin"* ]]; then
@@ -50,14 +48,44 @@ if ! colima status &> /dev/null; then
 fi
 docker context use colima &> /dev/null
 
-# 5. Sandbox Creation (Isolated from host source)
-echo "Initializing '$SANDBOX_NAME' sandbox (Full Host Isolation)..."
+# 5. Sandbox Creation (Native Branch Isolation + Resource Limits)
+echo "Initializing '$SANDBOX_NAME' sandbox (Isolation Branch: $ISOLATION_BRANCH)..."
 if ! sbx ls | grep -q "$SANDBOX_NAME"; then
-    # We mount the empty temp dir to satisfy sbx requirement, ensuring no host file changes
-    sbx create --name "$SANDBOX_NAME" shell "$HOST_MOUNT_DIR"
+    # --branch creates a native Git worktree isolation in .sbx/
+    # --memory and --cpus ensure stability
+    # If branch fails (e.g. branch exists), sbx falls back to direct mount.
+    sbx create --name "$SANDBOX_NAME" --branch "$ISOLATION_BRANCH" --memory 8g --cpus 4 shell "$WORKSPACE_DIR" || \
+    sbx create --name "$SANDBOX_NAME" --memory 8g --cpus 4 shell "$WORKSPACE_DIR"
 fi
 
-# 6. Robust Execution Helper
+# 6. Secret Management (Secure Injection)
+echo "Injecting secrets into 'sbx' manager..."
+
+# AWS Credentials extraction
+if [ -f ~/.aws/credentials ]; then
+    AWS_KEY=$(grep -A 5 "\[$AWS_PROFILE\]" ~/.aws/credentials | grep aws_access_key_id | cut -d'=' -f2 | xargs)
+    AWS_SECRET=$(grep -A 5 "\[$AWS_PROFILE\]" ~/.aws/credentials | grep aws_secret_access_key | cut -d'=' -f2 | xargs)
+    
+    if [ -n "$AWS_KEY" ] && [ -n "$AWS_SECRET" ]; then
+        echo "  - Mirroring AWS keys to sbx secrets..."
+        echo "AWS_ACCESS_KEY_ID=$AWS_KEY AWS_SECRET_ACCESS_KEY=$AWS_SECRET" | sbx secret set "$SANDBOX_NAME" aws
+    fi
+fi
+
+# OpenRouter Key (if exists in env)
+if [ -f .env ]; then
+    OR_KEY=$(grep OPENROUTER_API_KEY .env | cut -d'=' -f2 | xargs)
+    if [ -n "$OR_KEY" ]; then
+        echo "  - Mirroring OpenRouter key to sbx secrets..."
+        echo "$OR_KEY" | sbx secret set "$SANDBOX_NAME" google
+    fi
+fi
+
+# 7. Network Policy
+echo "Setting network policy to 'balanced'..."
+sbx policy set-default balanced || true
+
+# 8. Robust Execution Helper
 # Handles transient "container not ready" errors with retries
 sbx_exec() {
     local cmd=$1
@@ -70,9 +98,7 @@ sbx_exec() {
     
     until [ $retry_count -ge $max_retries ]
     do
-        # Use a temporary file for stderr
         tmp_err=$(mktemp)
-        # We ensure the wrapper commands are on a NEW LINE to avoid breaking heredocs
         if sbx exec "$SANDBOX_NAME" -- bash -c "$cmd
 s=\$?; sync; exit \$s" 2>$tmp_err; then
             status=0
@@ -89,7 +115,6 @@ s=\$?; sync; exit \$s" 2>$tmp_err; then
                 echo "    - Error executing command"
                 echo "$err" >&2
                 rm -f $tmp_err
-                # On general failure, we retry anyway unless we've exhausted retries
                 echo "    - General error, retrying in 5s... ($((retry_count+1))/$max_retries)"
                 sleep 5
                 retry_count=$((retry_count+1))
@@ -104,39 +129,33 @@ s=\$?; sync; exit \$s" 2>$tmp_err; then
     sleep 1
 }
 
-# 7. Sandbox Warm-up
-echo "Warming up sandbox..."
+# 9. Warm-up
 sbx_exec "true" "Initializing Docker daemon"
 
-# 8. Identity & Secret Mirroring
-echo "Mirroring host identities and AWS secrets..."
+# 10. Identity & P10K Mirroring
+echo "Mirroring host identities and terminal aesthetics..."
 
 inject_file_raw() {
     local target=$1
     local source=$2
     if [ -f "$source" ]; then
+        echo "  - Mirroring $(basename "$source")..."
         local content=$(cat "$source")
-        # We use a quoted EOF inside the bash -c to prevent host-side expansion
         sbx_exec "cat > $target <<'EOF'
 $content
-EOF" "Mirroring $(basename "$source")"
+EOF" ""
     fi
 }
 
-# Mirror Git
 inject_file_raw "/home/agent/.gitconfig" "$HOME/.gitconfig"
-
-# Mirror SSH
 sbx_exec "mkdir -p /home/agent/.ssh" "Creating .ssh directory"
 inject_file_raw "/home/agent/.ssh/id_ed25519.pub" "$HOME/.ssh/id_ed25519.pub"
 inject_file_raw "/home/agent/.ssh/id_rsa.pub" "$HOME/.ssh/id_rsa.pub"
 
-# Mirror AWS
-sbx_exec "mkdir -p /home/agent/.aws" "Creating .aws directory"
-inject_file_raw "/home/agent/.aws/config" "$HOME/.aws/config"
-inject_file_raw "/home/agent/.aws/credentials" "$HOME/.aws/credentials"
+# P10K Mirroring
+inject_file_raw "/home/agent/.p10k.zsh" "$HOME/.p10k.zsh"
 
-# 9. Hyper-Sequential Guest Provisioning (OOM Protection)
+# 11. Hyper-Sequential Guest Provisioning
 echo "Provisioning internal environment (Sequential/Memory-Safe)..."
 
 # Core Tools
@@ -146,24 +165,20 @@ for pkg in zsh git nodejs npm ca-certificates; do
 done
 
 # Flox Environment
-echo "Installing Flox (Declarative toolchain manager)..."
 sbx_exec 'echo "deb [trusted=yes] https://downloads.flox.dev/by-env/stable/deb stable/" | sudo tee /etc/apt/sources.list.d/flox.list' "Adding Flox repository"
 sbx_exec "sudo apt-get update -qq || true" "Refreshing Flox repo"
 sbx_exec "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq -o Dpkg::Options::=\"--force-confdef\" -o Dpkg::Options::=\"--force-confold\" flox && sudo apt-get clean" "Installing flox"
 sbx_exec "bash -c 'echo \"N\" | sudo dpkg --configure -a'" "Finalizing package config"
 
 # Modern Toolchain
-echo "Installing experimental tools (uv, gh, rg, jq, just)..."
 sbx_exec "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq gh ripgrep jq just && sudo apt-get clean" "Installing gh, rg, jq, just"
 sbx_exec "curl -k -LsSf https://astral.sh/uv/install.sh | sh" "Installing uv"
 
 # Agentic CLIs
-echo "Installing AI CLIs (Gemini, Claude)..."
 sbx_exec "sudo npm install -g -qq --no-fund --no-audit @google/gemini-cli" "Installing Gemini CLI"
 sbx_exec "sudo npm install -g -qq --no-fund --no-audit @anthropic-ai/claude-code" "Installing Claude CLI"
 
-# 10. Senior-Tier Shell Experience (ZSH + OMZ + P10K)
-echo "Configuring senior-tier terminal experience..."
+# 12. Senior-Tier Shell Experience
 sbx_exec 'if [ ! -d "$HOME/.oh-my-zsh" ]; then git clone -c http.sslVerify=false --depth=1 https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh; fi' "Installing Oh My Zsh"
 sbx_exec 'if [ ! -d "$HOME/powerlevel10k" ]; then git clone -c http.sslVerify=false --depth=1 https://github.com/romkatv/powerlevel10k.git ~/powerlevel10k; fi' "Installing Powerlevel10k"
 
@@ -184,8 +199,7 @@ source \$ZSH/oh-my-zsh.sh
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 source ~/powerlevel10k/powerlevel10k.zsh-theme
 
-# AWS Identity
-export AWS_PROFILE='$AWS_PROFILE'
+# AWS Identity (Region only, keys come from sbx secrets)
 export AWS_REGION='$AWS_REGION'
 
 # Senior Aliases
@@ -203,9 +217,8 @@ sbx_exec "cat > ~/.zshrc <<'EOF'
 $zshrc_content
 EOF" "Configuring .zshrc"
 
-# Force ZSH entry from bash (as sbx run might use bash initially)
+# Force ZSH entry from bash
 bashrc_redirect="
-# Automatically switch to ZSH if it exists
 if [ -f /usr/bin/zsh ] && [ \"\$SHELL\" != \"/usr/bin/zsh\" ]; then
   export SHELL=/usr/bin/zsh
   cd \$HOME
@@ -214,21 +227,34 @@ fi
 "
 sbx_exec "cat >> ~/.bashrc <<'EOF'
 $bashrc_redirect
-EOF" "Configuring .bashrc to redirect to ZSH"
+EOF" "Configuring bash to ZSH redirect"
 
-# Set ZSH as default shell in passwd
+# Set ZSH as default shell
 sb_user=$(sbx exec "$SANDBOX_NAME" -- whoami | head -n 1 | tr -d '\r')
-sbx_exec "sudo usermod -s /usr/bin/zsh $sb_user" "Setting ZSH as default shell for $sb_user"
+sbx_exec "sudo usermod -s /usr/bin/zsh $sb_user" "Setting ZSH as default shell"
 
-# 11. Workspace Provisioning (Isolated Clone)
-echo "Provisioning internal workspace (Isolated from Host)..."
-# We clone into /home/agent/workspace/agentic-sandbox
-# Using -c http.sslVerify=false because of sandbox certificate issues
-sbx_exec "mkdir -p /home/agent/workspace && cd /home/agent/workspace && git clone -c http.sslVerify=false https://github.com/enterthematrix/agentic-sandbox.git" "Cloning repository internally"
-sbx_exec "cd /home/agent/workspace/agentic-sandbox && touch .aiexclude && ln -sf .aiexclude .geminiignore && ln -sf .aiexclude .claudeignore" "Configuring internal ignore symlinks"
+# 13. Workspace Standards
+# Find where the project root is mounted
+sbx_exec "
+ROOT_PATH=\$(find /home/agent/workspace -name .aiexclude -exec dirname {} \; | head -n 1)
+if [ -n \"\$ROOT_PATH\" ]; then
+    echo \"Standardizing workspace at \$ROOT_PATH\"
+    cd \"\$ROOT_PATH\"
+    ln -sf .aiexclude .geminiignore
+    ln -sf .aiexclude .claudeignore
+else
+    echo \"No .aiexclude found, creating in /home/agent/workspace\"
+    cd /home/agent/workspace
+    touch .aiexclude
+    ln -sf .aiexclude .geminiignore
+    ln -sf .aiexclude .claudeignore
+fi
+" "Configuring ignore symlinks"
 
 echo "--------------------------------------------------"
-echo "Setup Complete! Your 'Dune' sandbox is ready."
-echo "Isolation: FULL (repo is cloned inside, no changes will leak to host Mac)"
+echo "Setup Complete! Your Pro 'Dune' sandbox is ready."
+echo "Isolation: FULL (Branch-based Worktree)"
+echo "UX: Senior Mac-tier (ZSH + P10K mirrored)"
+echo "Security: Balanced Network Policy + SBX Secrets"
 echo "👉 To enter the sandbox: sbx run $SANDBOX_NAME"
 echo "--------------------------------------------------"

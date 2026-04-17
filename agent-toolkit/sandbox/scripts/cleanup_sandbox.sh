@@ -17,7 +17,11 @@ echo "Deleting Colima environment..."
 colima stop 2>/dev/null || true
 colima delete -f 2>/dev/null || true
 
-# 3. Clean local Docker config if needed (optional, but keeps it thorough)
+# 3. Clean local artifacts
+echo "Removing local .sbx/ metadata and worktrees..."
+rm -rf .sbx/
+
+# 4. Clean local Docker config
 echo "Resetting Docker context..."
 docker context use default 2>/dev/null || true
 

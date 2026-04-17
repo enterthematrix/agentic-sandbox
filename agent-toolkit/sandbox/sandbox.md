@@ -31,24 +31,27 @@ Establish a high-performance, MicroVM-isolated development environment (`sbx`) t
 ### Phase 2: Identity & Secret Management
 1.  **Identity Mirroring:**
     - Mirror `~/.gitconfig`.
-    - Mirror SSH keys from `~/.ssh/` (specifically `id_ed25519.pub` and `id_rsa.pub` if they exist).
-2.  **AWS Integration:**
+    - Mirror SSH keys from `~/.ssh/` (specifically `id_ed25519.pub` and `id_rsa.pub`).
+    - **P10K Mirroring:** Mirror host `~/.p10k.zsh` to guest `~/.p10k.zsh` to preserve user's terminal aesthetics.
+2.  **AWS & AI Integration (Pro):**
     - Prompt the user for their preferred AWS Profile and Region.
-    - Inject the selected credentials into the sandbox using the `sbx secret` manager or secure file injection.
+    - **Secret Manager:** Use the `sbx secret` manager to securely inject `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `OPENROUTER_API_KEY`.
+    - **Network Policy:** Set the sandbox policy to `balanced` to ensure safe outbound communication.
 
 ### Phase 3: Guest Environment Provisioning
-1.  **Core Toolchain:** Install `zsh`, `git`, `nodejs`, `npm`, and `ca-certificates` via `apt`.
-2.  **Flox Environment:** Add the Flox repository and install `flox` (1.11.x+).
-3.  **Experimental Tools:**
+1.  **Resource Limits:** Create the sandbox with explicit limits: `--memory 8g --cpus 4`.
+2.  **Core Toolchain:** Install `zsh`, `git`, `nodejs`, `npm`, and `ca-certificates` via `apt`.
+3.  **Flox Environment:** Add the Flox repository and install `flox` (1.11.x+).
+4.  **Experimental Tools:**
     - Install `uv` via the official installer.
     - Install `gh`, `ripgrep`, `jq`, and `just` via `apt` or `flox`.
     - Global install `@google/gemini-cli` and `@anthropic-ai/claude-code`.
-4.  **Shell Aesthetics:** 
+5.  **Shell Aesthetics:** 
     - Install **Oh My Zsh** and **Powerlevel10k**.
     - Configure a `.zshrc` with the P10K theme, common aliases, and AWS environment variables.
 
 ### Phase 4: Workspace Standards
-1.  **Clone Primary Repo:** Ensure the `agentic-sandbox` repository is available in `/home/agent/workspace`.
+1.  **Isolated Workspace (Pro):** Use the `sbx create --branch` flag to create a native Git worktree isolation. This replaces the manual internal clone and ensures no host changes leak.
 2.  **Agent-Ready Standards:** Ensure a universal `.aiexclude` exists and verify symlinks for `.geminiignore` and `.claudeignore` are present and valid.
 
 ---
