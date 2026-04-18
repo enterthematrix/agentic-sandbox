@@ -5,14 +5,6 @@
 
 set -e
 
-# Mirror AWS Profile choice
-if [ -t 0 ]; then
-    read -p "Enter AWS Profile to default to [slalom_aws]: " AWS_PROFILE
-    AWS_PROFILE=${AWS_PROFILE:-slalom_aws}
-else
-    AWS_PROFILE="slalom_aws"
-fi
-
 # Configuration
 SANDBOX_NAME="dune"
 # Decoy mount to satisfy sbx - ensures NO host project files leak in.
@@ -21,6 +13,43 @@ HOST_DECOY_DIR=$(mktemp -d -t dune-isolation-XXXXXX)
 HOST_ENV_FILE="$HOST_DECOY_DIR/.host_env"
 
 echo "Starting 'Dune' Pro Setup (Seamless Host Integration)..."
+
+# Pre-flight: Check critical host dependencies
+echo "Checking host environment..."
+PREFLIGHT_WARNINGS=()
+
+# Check for ~/.aws directory
+if [ ! -d "$HOME/.aws" ]; then
+    echo "WARNING: ~/.aws directory not found"
+    echo "  Creating minimal ~/.aws directory to prevent mount failure"
+    mkdir -p "$HOME/.aws"
+    PREFLIGHT_WARNINGS+=("AWS credentials not configured")
+fi
+
+# Check for SSH key
+if [ ! -f "$HOME/.ssh/id_ed25519" ]; then
+    PREFLIGHT_WARNINGS+=("SSH key missing (~/.ssh/id_ed25519) - Git operations will fail")
+fi
+
+# Check for ~/.gitconfig
+if [ ! -f "$HOME/.gitconfig" ]; then
+    PREFLIGHT_WARNINGS+=("~/.gitconfig missing - Git commits will have no author identity")
+fi
+
+# Mirror AWS Profile choice
+if [ -t 0 ]; then
+    read -p "Enter AWS Profile to default to [slalom_aws]: " AWS_PROFILE
+    AWS_PROFILE=${AWS_PROFILE:-slalom_aws}
+else
+    AWS_PROFILE="slalom_aws"
+fi
+
+# Validate AWS profile exists
+if [ -f "$HOME/.aws/config" ]; then
+    if ! grep -q "\[profile $AWS_PROFILE\]" "$HOME/.aws/config" 2>/dev/null; then
+        PREFLIGHT_WARNINGS+=("AWS profile '$AWS_PROFILE' not found in ~/.aws/config")
+    fi
+fi
 
 # 1. Host Pre-flight
 echo "Ensuring host dependencies..."
@@ -35,8 +64,19 @@ fi
 docker context use colima &> /dev/null
 
 # 3. Environment Extraction
-echo "Capturing host environment variables from ~/.zshrc..."
-grep -E "^export |^alias " ~/.zshrc | grep -v "eval \"\$(brew shellenv)\"" > "$HOST_ENV_FILE" || true
+echo "Capturing host environment variables..."
+if [ -f "$HOME/.zshrc" ]; then
+    grep -E "^export |^alias " ~/.zshrc | grep -v "eval \"\$(brew shellenv)\"" > "$HOST_ENV_FILE" || true
+    echo "  Extracted from ~/.zshrc"
+elif [ -f "$HOME/.bashrc" ]; then
+    grep -E "^export |^alias " ~/.bashrc | grep -v "eval \"\$(brew shellenv)\"" > "$HOST_ENV_FILE" || true
+    echo "  Extracted from ~/.bashrc (zsh not in use)"
+    PREFLIGHT_WARNINGS+=("Using bash instead of zsh - some features may differ")
+else
+    touch "$HOST_ENV_FILE"
+    echo "  No shell config found, using defaults"
+    PREFLIGHT_WARNINGS+=("No ~/.zshrc or ~/.bashrc found")
+fi
 echo "export PATH=\$PATH:/opt/homebrew/bin:/usr/local/bin" >> "$HOST_ENV_FILE"
 
 # 4. Sandbox Creation
@@ -128,8 +168,11 @@ if [ -f ~/.ssh/id_ed25519 ]; then
         echo "ERROR: Failed to copy SSH private key to sandbox"
         exit 1
     fi
+    [ -f ~/.ssh/id_ed25519.pub ] && inject_file_raw "/home/agent/.ssh/id_ed25519.pub" "$HOME/.ssh/id_ed25519.pub"
+else
+    echo "WARNING: No SSH key found at ~/.ssh/id_ed25519"
+    echo "  Generate one with: ssh-keygen -t ed25519 -C 'your_email@example.com'"
 fi
-[ -f ~/.ssh/id_ed25519.pub ] && inject_file_raw "/home/agent/.ssh/id_ed25519.pub" "$HOME/.ssh/id_ed25519.pub"
 
 # Create Sandbox-optimized SSH config (Using Port 443 fallback for reliability)
 sbx_exec "cat > ~/.ssh/config <<'EOF'
@@ -237,9 +280,9 @@ else
     GIT_STATUS="✗ FAILED"
 fi
 
-# Test AWS credentials
+# Test AWS credentials (direct exec, no retries for expected auth failures)
 echo "  - Testing AWS credentials..."
-if sbx_exec "aws sts get-caller-identity --profile $AWS_PROFILE > /dev/null 2>&1" "Validating AWS credentials"; then
+if sbx exec "$SANDBOX_NAME" -- bash -c "aws sts get-caller-identity --profile $AWS_PROFILE > /dev/null 2>&1"; then
     AWS_STATUS="✓ WORKING (Profile: $AWS_PROFILE)"
 else
     AWS_STATUS="⚠ NOT CONFIGURED or expired (Profile: $AWS_PROFILE)"
@@ -251,6 +294,16 @@ echo "  SSH:   $SSH_STATUS"
 echo "  Git:   $GIT_STATUS"
 echo "  AWS:   $AWS_STATUS"
 echo ""
+
+# Display pre-flight warnings if any
+if [ ${#PREFLIGHT_WARNINGS[@]} -gt 0 ]; then
+    echo "⚠ Pre-flight Warnings:"
+    for warning in "${PREFLIGHT_WARNINGS[@]}"; do
+        echo "  - $warning"
+    done
+    echo ""
+fi
+
 echo "👉 To enter: sbx run dune"
 echo "--------------------------------------------------"
 
