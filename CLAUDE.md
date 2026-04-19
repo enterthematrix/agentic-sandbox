@@ -1,4 +1,4 @@
-# AGENT.md
+# CLAUDE.md
 
 Behavioral guidelines for AI agents working in agentic-sandbox. These rules prioritize correctness and transparency over speed.
 
@@ -138,7 +138,7 @@ If you identify that a task requires tools or permissions outside your sandbox (
 
 - Use **latest versions** of libraries and idiomatic approaches
 - **Root cause analysis** before attempting any fix
-- Keep **READEs minimal** - only essential information
+- Keep **READMEs minimal** - only essential information
 - **NO emojis** in code or documentation (exception: user explicitly requests)
 
 ---

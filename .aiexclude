@@ -1,25 +1,76 @@
-# Master AI Ignore List
+# Master AI Ignore List - Single source of truth for AI tools
+# Symlinked by: .claudeignore, .geminiignore
+
+# Version Control
 .git/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+**/__pycache__/
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.db
+*.sqlite
+*.sqlite3
+db.sqlite3-journal
+
+# Node.js & JavaScript
 node_modules/
 **/node_modules/
-target/           # Rust build artifacts
-.venv/            # Python environments
-**/__pycache__/   # Python byte code
-.pytest_cache/    # Python test cache
-.ruff_cache/      # Ruff linter cache
-*.log
-*.parquet         # Massive data files
-.env*             # Secrets
-/data/raw/        # Raw engineering data
+.npm
+.yarn/
+.pnp
+.pnp.*
+*.tsbuildinfo
 
 # Frontend Build & Cache
-.next/            # Next.js build output
-out/              # Next.js static export
-.swc/             # SWC compiler cache
-test-results/     # Playwright/Vitest artifacts
+.next/
+out/
+.swc/
+test-results/
 playwright-report/
+next-env.d.ts
+
+# Build Artifacts
+target/
+build/
+dist/
+*.so
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+
+# Environment & Secrets
+.env*
+*.pypirc
+
+# Data Files
+*.parquet
+/data/raw/
 
 # OS & IDE
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
 .vscode/
 .idea/
+
+# Vercel
+.vercel

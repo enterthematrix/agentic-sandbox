@@ -1,0 +1,14 @@
+# Frontend-specific overrides (inherits from root .gitignore)
+
+# Yarn-specific whitelist patterns
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# Test coverage reports
+/coverage
+
+# SSL certificates
+*.pem

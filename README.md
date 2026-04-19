@@ -1,13 +1,14 @@
 # Agentic Sandbox
 
-An experimental repository exploring AI-driven software engineering, agentic workflows, and AI-augmented applications.
+An experimental laboratory for exploring AI-driven software engineering, agentic workflows, and AI-augmented applications. This repository serves as both a toolkit for building with AI agents and a collection of prototype applications demonstrating agentic coding patterns.
 
-## Projects
+## 🎯 Purpose
 
-### [Kanban Studio](./kanban_studio)
-A full-stack, AI-augmented Kanban board application. This project serves as a sandbox for exploring how AI agents can interact with, update, and manage persistent application states.
+This repository explores two key areas:
 
-- **Frontend:** Next.js (TypeScript, React 19) + Tailwind CSS + DnD-Kit
-- **Backend:** FastAPI (Python) + SQLite
-- **AI Integration:** OpenRouter (GPT-4o-mini) with structured output for board manipulation
-- **Key Features:** JWT-based auth, real-time board persistence, and an integrated AI sidebar for natural language board management.
+1. **Infrastructure** - Tools and environments that enable safe, isolated AI agent development
+2. **Applications** - Prototype projects built using agentic coding workflows to learn patterns and best practices
+
+## 🤖 For AI Agents
+
+**[CLAUDE.md](./CLAUDE.md)** contains behavioral guidelines that all AI agents must follow when working in this repository. These rules apply regardless of which directory you're working in.

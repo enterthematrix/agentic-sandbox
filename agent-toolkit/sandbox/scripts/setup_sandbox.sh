@@ -292,7 +292,9 @@ inject_file_raw "/home/agent/.p10k.zsh" "$HOME/.p10k.zsh"
 
 # 8. Guest Provisioning
 echo "Provisioning internal environment..."
-sbx_exec "sudo apt-get update -qq" "Updating package lists"
+sbx_exec "sudo apt-get update -qq --allow-unauthenticated" "Updating package lists (initial)"
+sbx_exec "sudo apt-get install -y -qq --allow-unauthenticated debian-archive-keyring" "Installing Debian keyring"
+sbx_exec "sudo apt-get update -qq" "Updating package lists (verified)"
 for pkg in zsh git openssh-client nodejs npm ca-certificates gh ripgrep jq just wget bzip2 xz-utils; do
     sbx_exec "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq $pkg && sudo apt-get clean" "Installing $pkg"
 done
