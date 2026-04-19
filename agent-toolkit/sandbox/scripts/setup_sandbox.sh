@@ -36,6 +36,82 @@ if [ ! -f "$HOME/.gitconfig" ]; then
     PREFLIGHT_WARNINGS+=("~/.gitconfig missing - Git commits will have no author identity")
 fi
 
+# Check for XQuartz (GUI support - optional)
+if [ ! -d "/opt/X11" ] && [ ! -f "/Applications/Utilities/XQuartz.app/Contents/MacOS/X11" ]; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  GUI Support Available (Optional)"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "XQuartz is not installed. This is optional but enables:"
+    echo "  • Firefox browser inside sandbox"
+    echo "  • VS Code editor inside sandbox"
+    echo "  • Other GUI applications"
+    echo ""
+    echo "You can:"
+    echo "  1. Install now: brew install --cask xquartz"
+    echo "     (Requires restart after installation)"
+    echo ""
+    echo "  2. Continue with CLI-only experience"
+    echo "     (Terminal, Git, AWS CLI will work perfectly)"
+    echo ""
+    if [ -t 0 ]; then
+        read -p "Install XQuartz for GUI support? (y/N): " install_xquartz
+        if [[ "$install_xquartz" =~ ^[Yy]$ ]]; then
+            echo ""
+            echo "Installing XQuartz..."
+            if brew install --cask xquartz; then
+                echo ""
+                echo "✓ XQuartz installed successfully!"
+                echo ""
+                echo "⚠ IMPORTANT: You must restart your Mac (or logout/login) for XQuartz to work."
+                echo "After restart, run this setup script again."
+                echo ""
+                read -p "Press Enter to exit setup (restart required)..."
+                exit 0
+            else
+                echo ""
+                echo "⚠ XQuartz installation failed. Continuing without GUI support."
+                GUI_AVAILABLE=false
+            fi
+        else
+            echo ""
+            echo "Continuing with CLI-only experience (no GUI applications)."
+            GUI_AVAILABLE=false
+        fi
+    else
+        PREFLIGHT_WARNINGS+=("XQuartz not installed - GUI applications won't work (install: brew install --cask xquartz)")
+        GUI_AVAILABLE=false
+    fi
+    echo ""
+else
+    GUI_AVAILABLE=true
+    echo "✓ XQuartz detected - GUI support enabled"
+
+    # Check if XQuartz has TCP enabled (required for GUI to work)
+    XQUARTZ_TCP=$(defaults read org.xquartz.X11 nolisten_tcp 2>/dev/null || echo "0")
+    if [ "$XQUARTZ_TCP" = "1" ]; then
+        echo ""
+        echo "⚠️  XQuartz TCP is disabled - GUI apps won't work until enabled"
+        echo ""
+        echo "To enable:"
+        echo "  1. Open XQuartz Preferences (Cmd+,)"
+        echo "  2. Go to 'Security' tab"
+        echo "  3. Check '☑ Allow connections from network clients'"
+        echo "  4. Quit XQuartz completely: killall Xquartz X11.bin"
+        echo "  5. Restart XQuartz: open -a XQuartz"
+        echo "  6. Re-run this setup script"
+        echo ""
+        if [ -t 0 ]; then
+            read -p "Continue without working GUI? (y/N): " continue_anyway
+            if [[ ! "$continue_anyway" =~ ^[Yy]$ ]]; then
+                echo "Setup cancelled. Enable XQuartz TCP and try again."
+                exit 1
+            fi
+        fi
+    fi
+fi
+
 # Mirror AWS Profile choice
 if [ -t 0 ]; then
     read -p "Enter AWS Profile to default to [slalom_aws]: " AWS_PROFILE
@@ -51,6 +127,9 @@ if [ -f "$HOME/.aws/config" ]; then
     fi
 fi
 
+# Capture host IP for X11 forwarding (host.docker.internal doesn't work reliably)
+HOST_IP=$(ifconfig | grep "inet " | grep -v 127.0.0.1 | head -n 1 | awk '{print $2}')
+
 # 1. Host Pre-flight
 echo "Ensuring host dependencies..."
 brew install uv gh jq colima docker docker-compose &> /dev/null || true
@@ -59,7 +138,7 @@ brew install --cask sbx &> /dev/null || true
 # 2. Infrastructure Start
 if ! colima status &> /dev/null; then
     echo "Starting Colima..."
-    colima start --cpu 4 --memory 8 --vm-type=vz --vz-rosetta --mount-type=virtiofs
+    colima start --cpu 4 --memory 12 --vm-type=vz --vz-rosetta --mount-type=virtiofs
 fi
 docker context use colima &> /dev/null
 
@@ -84,9 +163,26 @@ if sbx ls | grep -q "$SANDBOX_NAME"; then
     echo "Sandbox '$SANDBOX_NAME' exists. Re-provisioning..."
 else
     echo "Creating isolated sandbox '$SANDBOX_NAME'..."
-    sbx create --name "$SANDBOX_NAME" --memory 8g --cpus 4 shell \
-        "$HOST_DECOY_DIR" \
-        "$HOME/.aws:ro"
+    echo "Using temporary workspace: $HOST_DECOY_DIR"
+
+    # Ensure the decoy directory exists and is accessible
+    if [ ! -d "$HOST_DECOY_DIR" ]; then
+        echo "ERROR: Temporary workspace directory was not created"
+        exit 1
+    fi
+
+    if [ "$GUI_AVAILABLE" = true ]; then
+        # Create with X11 socket mount for GUI support (auto-confirm workspace creation)
+        yes | sbx create --name "$SANDBOX_NAME" --memory 12g --cpus 4 shell \
+            "$HOST_DECOY_DIR" \
+            "$HOME/.aws:ro" \
+            "/tmp/.X11-unix:ro" 2>&1 | grep -v "^y$" || true
+    else
+        # Create without GUI support (auto-confirm workspace creation)
+        yes | sbx create --name "$SANDBOX_NAME" --memory 12g --cpus 4 shell \
+            "$HOST_DECOY_DIR" \
+            "$HOME/.aws:ro" 2>&1 | grep -v "^y$" || true
+    fi
 fi
 
 # 5. Robust Execution Helper
@@ -197,13 +293,42 @@ inject_file_raw "/home/agent/.p10k.zsh" "$HOME/.p10k.zsh"
 # 8. Guest Provisioning
 echo "Provisioning internal environment..."
 sbx_exec "sudo apt-get update -qq" "Updating package lists"
-for pkg in zsh git openssh-client nodejs npm ca-certificates gh ripgrep jq just; do
+for pkg in zsh git openssh-client nodejs npm ca-certificates gh ripgrep jq just wget bzip2 xz-utils; do
     sbx_exec "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq $pkg && sudo apt-get clean" "Installing $pkg"
 done
+
+# Install X11 libraries for GUI support
+if [ "$GUI_AVAILABLE" = true ]; then
+    echo "Installing GUI support packages..."
+    # Install all GUI packages in one command to avoid retry loops on individual packages
+    sbx_exec "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+        x11-apps libx11-6 libx11-xcb1 libxcomposite1 libxcursor1 libxdamage1 \
+        libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libxss1 libxtst6 \
+        libnss3 libgdk-pixbuf-2.0-0 libgtk-3-0 libgbm1 libasound2t64 \
+        libpci3 libegl1 dbus-x11 \
+        && sudo apt-get clean" "Installing GUI packages"
+fi
 
 sbx_exec "curl -k -LsSf https://astral.sh/uv/install.sh | sh" "Installing uv"
 sbx_exec "sudo rm -rf /usr/local/lib/node_modules/@google/gemini-cli /usr/local/lib/node_modules/@anthropic-ai/claude-code" "Cleaning stale CLIs"
 sbx_exec "sudo npm install -g -qq --no-fund --no-audit @google/gemini-cli @anthropic-ai/claude-code" "Installing CLIs"
+
+# Install GUI applications (Firefox and VS Code)
+if [ "$GUI_AVAILABLE" = true ]; then
+    echo "Installing GUI applications..."
+
+    # Install Firefox ESR (ARM64) - Chrome doesn't have ARM64 Linux builds
+    sbx_exec "cd /tmp && wget -q --no-check-certificate 'https://download.mozilla.org/?product=firefox-esr-latest-ssl&os=linux64-aarch64&lang=en-US' -O firefox-esr.tar.bz2" "Downloading Firefox ESR"
+    sbx_exec "sudo rm -rf /opt/firefox && cd /tmp && tar -xJf firefox-esr.tar.bz2 && sudo mv firefox /opt/firefox" "Extracting Firefox"
+    sbx_exec "sudo ln -sf /opt/firefox/firefox /usr/local/bin/firefox" "Installing Firefox"
+    sbx_exec "rm -f /tmp/firefox-esr.tar.bz2" "Cleaning up"
+
+    # Install VS Code (ARM64)
+    sbx_exec "cd /tmp && wget -q 'https://code.visualstudio.com/sha/download?build=stable&os=linux-deb-arm64' -O vscode.deb" "Downloading VS Code"
+    sbx_exec "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq /tmp/vscode.deb" "Installing VS Code"
+    sbx_exec "sudo apt-get install -f -y -qq && sudo apt-get clean" "Fixing dependencies"
+    sbx_exec "rm -f /tmp/vscode.deb" "Cleaning up"
+fi
 
 # Shell Dirs (IDEMPOTENT FIX)
 sbx_exec "rm -rf ~/.oh-my-zsh && git clone -c http.sslVerify=false --depth=1 https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh" "Installing Oh My Zsh"
@@ -249,7 +374,10 @@ export AWS_SDK_LOAD_CONFIG=1
 export AWS_PROFILE='$AWS_PROFILE'
 export PATH=\$HOME/.local/bin:\$PATH
 
-# 9. Force colorized prompt even in non-interactive mode
+# 9. GUI Support (X11 Display)
+export DISPLAY='$HOST_IP':0
+
+# 10. Force colorized prompt even in non-interactive mode
 autoload -U colors && colors
 EOF" "Configuring .zshrc"
 
@@ -288,11 +416,27 @@ else
     AWS_STATUS="⚠ NOT CONFIGURED or expired (Profile: $AWS_PROFILE)"
 fi
 
-echo "--------------------------------------------------"
-echo "Setup Complete! Validation Results:"
+# Test GUI capability (if XQuartz available)
+if [ "$GUI_AVAILABLE" = true ]; then
+    echo "  - Testing GUI capability..."
+    if sbx exec "$SANDBOX_NAME" -- bash -c "which firefox > /dev/null 2>&1 && which code > /dev/null 2>&1"; then
+        GUI_STATUS="✓ AVAILABLE (Firefox & VS Code installed)"
+    else
+        GUI_STATUS="⚠ PARTIAL (some GUI apps missing)"
+    fi
+else
+    GUI_STATUS="⚠ NOT AVAILABLE (XQuartz not installed)"
+fi
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Setup Complete!"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Validation Results:"
 echo "  SSH:   $SSH_STATUS"
 echo "  Git:   $GIT_STATUS"
 echo "  AWS:   $AWS_STATUS"
+echo "  GUI:   $GUI_STATUS"
 echo ""
 
 # Display pre-flight warnings if any
@@ -304,8 +448,26 @@ if [ ${#PREFLIGHT_WARNINGS[@]} -gt 0 ]; then
     echo ""
 fi
 
-echo "👉 To enter: sbx run dune"
-echo "--------------------------------------------------"
+# Show GUI instructions
+if [ "$GUI_AVAILABLE" = false ]; then
+    echo "💡 To enable GUI support later:"
+    echo "   1. Install XQuartz: brew install --cask xquartz"
+    echo "   2. Restart your Mac (or logout/login)"
+    echo "   3. Re-run this setup script"
+    echo "   4. You'll get Firefox & VS Code inside the sandbox"
+    echo ""
+elif [ "$GUI_AVAILABLE" = true ] && [[ "$GUI_STATUS" == *"AVAILABLE"* ]]; then
+    echo "🎨 GUI Applications Ready:"
+    echo "   • Launch Firefox: firefox &"
+    echo "   • Launch VS Code: code &"
+    echo "   • Test X11:       xeyes"
+    echo ""
+    echo "   Note: Start XQuartz first: open -a XQuartz"
+    echo ""
+fi
+
+echo "👉 To enter sandbox: sbx run dune"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # Exit with error if critical services failed
 if [[ "$SSH_STATUS" == *"FAILED"* ]] || [[ "$GIT_STATUS" == *"FAILED"* ]]; then
