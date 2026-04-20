@@ -169,6 +169,58 @@ If host has no SSH key:
 - If copy fails or file is missing, create minimal fallback configuration
 - Failure should not block setup completion
 
+### 6.6 VS Code Configuration
+
+**Settings and Keybindings**
+- VS Code settings.json must be copied from host `~/Library/Application Support/Code/User/`
+- VS Code keybindings.json must be copied from host if present
+- Files must be placed in guest at `~/.config/Code/User/`
+- Directory structure must be created if it doesn't exist
+
+**Extension Installation**
+- Extension list must be extracted from host `~/.vscode/extensions/extensions.json`
+- Extension IDs must be parsed using jq
+- Each extension must be installed individually using `code --install-extension <id> --force`
+- Extension installation runs after VS Code is installed
+- Extension installation failures should not block setup completion
+
+**Supported Extensions**
+All extensions from host will be replicated, including but not limited to:
+- Language support (Python, TypeScript, etc.)
+- AI assistants (Continue, Copilot, ChatGPT, Gemini)
+- Development tools (Docker, debugging tools)
+- Productivity tools (formatters, linters)
+
+### 6.7 Claude Code Configuration
+
+**Settings Replication**
+- Claude settings.json must be copied from host `~/.claude/`
+- Settings include:
+  - AWS Bedrock configuration
+  - Model preferences (Opus, Sonnet, Haiku)
+  - Environment variables
+  - Permission defaults
+  - Enabled plugins configuration
+- File must be placed in guest at `~/.claude/settings.json`
+
+**Plugin Installation**
+- Plugin manifest (installed_plugins.json) must be copied from host
+- Plugin cache directory must be transferred as tarball
+- Tarball creation: `tar -czf <temp> -C ~/.claude/plugins cache`
+- Tarball transfer: Base64 encode and inject via sbx_exec
+- Tarball extraction: Extract to `~/.claude/plugins/` in guest
+- Plugin structure must be preserved:
+  - `/cache/claude-plugins-official/<plugin-name>/<version>/`
+  - Complete directory structure (commands/, hooks/, scripts/)
+  - All metadata files (LICENSE, README.md, .claude-plugin/)
+
+**Verification**
+After installation, verify:
+- Settings.json exists with correct content
+- Plugin manifest exists
+- Plugin cache directory structure is intact
+- Enabled plugins match host configuration
+
 ---
 
 ## 7. Guest Environment Provisioning
@@ -395,6 +447,15 @@ If critical files missing on host:
 - Base64 encoding/decoding may fail or timeout
 - Fallback: create minimal theme configuration or skip
 
+### 13.5 VS Code and Claude Configuration Staleness
+- VS Code settings and extensions are copied once at setup
+- Claude Code settings and plugins are copied once at setup
+- Changes to host VS Code settings not reflected in running sandbox
+- New extensions installed on host won't appear in sandbox
+- Changes to Claude plugins or settings require sandbox rebuild
+- User must re-run setup to sync new VS Code extensions
+- User must re-run setup to sync Claude plugin updates
+
 ---
 
 ## 14. Security Considerations
@@ -451,6 +512,23 @@ An agent implementing this spec should verify:
 - [ ] Each error shows how to fix it
 - [ ] Errors distinguish between "missing" and "failed"
 - [ ] Exit codes match failure severity
+
+### 15.5 VS Code Configuration
+- [ ] VS Code settings.json copied to ~/.config/Code/User/
+- [ ] VS Code keybindings.json copied if present
+- [ ] Extension list extracted from host extensions.json
+- [ ] All extensions from host installed in sandbox
+- [ ] code --list-extensions shows all expected extensions
+- [ ] Settings match host (theme, preferences, etc.)
+
+### 15.6 Claude Code Configuration
+- [ ] Claude settings.json copied to ~/.claude/
+- [ ] Settings contain environment variables from host
+- [ ] Plugin manifest (installed_plugins.json) copied
+- [ ] Plugin cache directory structure preserved
+- [ ] Enabled plugins match host configuration
+- [ ] Plugin files verified (commands/, hooks/, scripts/)
+- [ ] ralph-loop plugin (or others) functional in sandbox
 
 ---
 

@@ -1,1 +1,1 @@
-# Agent Toolkit\n\nResources and configurations for agentic coding.
+# Agent Toolkit: Resources and configurations for agentic coding.

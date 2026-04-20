@@ -290,6 +290,54 @@ fi
 inject_file_raw "/home/agent/.gitconfig" "$HOME/.gitconfig"
 inject_file_raw "/home/agent/.p10k.zsh" "$HOME/.p10k.zsh"
 
+# VS Code Settings (Live Sync)
+VSCODE_USER_DIR="$HOME/Library/Application Support/Code/User"
+if [ -d "$VSCODE_USER_DIR" ]; then
+    echo "Synchronizing VS Code settings..."
+    sbx_exec "mkdir -p ~/.config/Code/User" "Creating VS Code config directory"
+
+    if [ -f "$VSCODE_USER_DIR/settings.json" ]; then
+        inject_file_raw "/home/agent/.config/Code/User/settings.json" "$VSCODE_USER_DIR/settings.json"
+    fi
+
+    if [ -f "$VSCODE_USER_DIR/keybindings.json" ]; then
+        inject_file_raw "/home/agent/.config/Code/User/keybindings.json" "$VSCODE_USER_DIR/keybindings.json"
+    fi
+fi
+
+# Claude Code Settings & Plugins
+CLAUDE_DIR="$HOME/.claude"
+if [ -d "$CLAUDE_DIR" ]; then
+    echo "Synchronizing Claude Code settings and plugins..."
+    sbx_exec "mkdir -p ~/.claude/plugins" "Creating Claude directory structure"
+
+    # Copy Claude settings (includes enabled plugins)
+    if [ -f "$CLAUDE_DIR/settings.json" ]; then
+        inject_file_raw "/home/agent/.claude/settings.json" "$CLAUDE_DIR/settings.json"
+    fi
+
+    # Copy installed plugins manifest
+    if [ -f "$CLAUDE_DIR/plugins/installed_plugins.json" ]; then
+        inject_file_raw "/home/agent/.claude/plugins/installed_plugins.json" "$CLAUDE_DIR/plugins/installed_plugins.json"
+    fi
+
+    # Copy plugin cache directory (contains actual plugin files)
+    if [ -d "$CLAUDE_DIR/plugins/cache" ]; then
+        # Create tarball of plugins cache on host
+        PLUGINS_TAR=$(mktemp)
+        echo "  Creating plugins archive..."
+        if tar -czf "$PLUGINS_TAR" -C "$CLAUDE_DIR/plugins" cache 2>/dev/null; then
+            # Base64 encode and inject into sandbox
+            PLUGINS_B64=$(base64 < "$PLUGINS_TAR")
+            sbx_exec "echo '$PLUGINS_B64' | base64 -d > /tmp/claude_plugins.tar.gz" "Transferring Claude plugins"
+            sbx_exec "cd ~/.claude/plugins && tar -xzf /tmp/claude_plugins.tar.gz && rm /tmp/claude_plugins.tar.gz" "Installing Claude plugins"
+            rm -f "$PLUGINS_TAR"
+        else
+            echo "  Warning: Could not create plugins archive, skipping plugin files"
+        fi
+    fi
+fi
+
 # 8. Guest Provisioning
 echo "Provisioning internal environment..."
 sbx_exec "sudo apt-get update -qq --allow-unauthenticated" "Updating package lists (initial)"
@@ -330,6 +378,22 @@ if [ "$GUI_AVAILABLE" = true ]; then
     sbx_exec "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq /tmp/vscode.deb" "Installing VS Code"
     sbx_exec "sudo apt-get install -f -y -qq && sudo apt-get clean" "Fixing dependencies"
     sbx_exec "rm -f /tmp/vscode.deb" "Cleaning up"
+
+    # Install VS Code extensions from host
+    VSCODE_EXT_JSON="$HOME/.vscode/extensions/extensions.json"
+    if [ -f "$VSCODE_EXT_JSON" ]; then
+        echo "Installing VS Code extensions from host..."
+        # Extract extension IDs using jq
+        EXTENSIONS=$(cat "$VSCODE_EXT_JSON" | jq -r '.[].identifier.id' 2>/dev/null || echo "")
+        if [ -n "$EXTENSIONS" ]; then
+            # Install each extension individually
+            echo "$EXTENSIONS" | while IFS= read -r ext; do
+                if [ -n "$ext" ]; then
+                    sbx_exec "code --install-extension \"$ext\" --force" "Installing extension: $ext" || true
+                fi
+            done
+        fi
+    fi
 fi
 
 # Shell Dirs (IDEMPOTENT FIX)
