@@ -18,12 +18,13 @@ ClauseAI transforms complex legal document creation into a simple, conversationa
 
 ## Project Status
 
-**Current Version:** V1 Foundation (CL-4)
+**Current Version:** V1 with AI Chat (CL-5)
 
-This implementation establishes the technical foundation with formal frontend/backend separation, database persistence, and development automation.
+A conversational AI assistant powered by Claude helps users create Mutual NDAs through natural dialogue, making legal document creation accessible and intuitive.
 
 **Features:**
-- Web-based Mutual NDA creator
+- AI chat interface for guided NDA creation
+- Manual form option for direct input
 - Real-time document preview
 - Session persistence (SQLite)
 - Download as markdown
@@ -59,6 +60,21 @@ ClauseAI/
 
 ## Quick Start
 
+### Configuration
+
+Create a `.env` file in the ClauseAI root directory:
+
+```bash
+cp .env.example .env
+```
+
+Add your Anthropic API key to enable AI chat features:
+
+```
+ANTHROPIC_API_KEY=your_api_key_here
+API_PORT=8000
+```
+
 ### Development
 
 ```bash
@@ -90,6 +106,7 @@ docker run -p 8000:8000 clauseai
 - `PUT /api/sessions/{id}` - Update a session
 - `DELETE /api/sessions/{id}` - Delete a session
 - `POST /api/generate` - Generate populated document
+- `POST /api/chat` - Conversational AI interface for gathering NDA information
 
 ## Design Direction
 
@@ -121,9 +138,9 @@ This is an experimental prototype built using agentic coding workflows.
 - [x] CL-2: Legal document template dataset (11 templates)
 - [x] CL-3: Prototype Mutual NDA creator
 - [x] CL-4: V1 technical foundation
+- [x] CL-5: AI chat interface (Mutual NDA only)
 
 **Upcoming Phases:**
-- [ ] CL-5: AI chat interface (Mutual NDA only)
 - [ ] CL-6: Expand to all document types
 - [ ] CL-7: Multi-user support, PDF export, UI polish
 
