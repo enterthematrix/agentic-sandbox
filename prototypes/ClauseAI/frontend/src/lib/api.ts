@@ -22,6 +22,17 @@ export interface PopulatedDocument {
   filename: string;
 }
 
+export interface ChatMessage {
+  role: string;
+  content: string;
+}
+
+export interface ChatResponse {
+  message: string;
+  form_data?: FormData;
+  is_complete: boolean;
+}
+
 export async function generateDocument(
   documentType: string,
   formData: FormData
@@ -57,6 +68,26 @@ export async function createSession(
 
   if (!res.ok) {
     throw new Error(`Failed to create session: ${res.statusText}`);
+  }
+
+  return res.json();
+}
+
+export async function sendChatMessage(
+  messages: ChatMessage[],
+  documentType: string
+): Promise<ChatResponse> {
+  const res = await fetch(`${API_BASE}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messages,
+      document_type: documentType,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to send chat message: ${res.statusText}`);
   }
 
   return res.json();
