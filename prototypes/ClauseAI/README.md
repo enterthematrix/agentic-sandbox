@@ -18,13 +18,16 @@ ClauseAI transforms complex legal document creation into a simple, conversationa
 
 ## Project Status
 
-**Current Version:** V1 with AI Chat (CL-5)
+**Current Version:** Multi-Document Support (CL-6)
 
-A conversational AI assistant powered by Claude helps users create Mutual NDAs through natural dialogue, making legal document creation accessible and intuitive.
+ClauseAI now integrates 11 professional legal document templates with intelligent routing. Users can browse all available document types, with full conversational AI support for Mutual NDAs and graceful handling of other templates.
 
 **Features:**
-- AI chat interface for guided NDA creation
-- Manual form option for direct input
+- 11 legal document templates from CommonPaper
+- Document type browser with detailed descriptions
+- AI chat interface for guided Mutual NDA creation
+- Manual form option for Mutual NDA direct input
+- Intelligent routing for unsupported document types
 - Real-time document preview
 - Session persistence (SQLite)
 - Download as markdown
@@ -101,12 +104,13 @@ docker run -p 8000:8000 clauseai
 ## API Endpoints
 
 - `GET /api/health` - Health check
+- `GET /api/templates` - List all available document templates with support status
 - `POST /api/sessions` - Create a new session
 - `GET /api/sessions/{id}` - Retrieve a session
 - `PUT /api/sessions/{id}` - Update a session
 - `DELETE /api/sessions/{id}` - Delete a session
 - `POST /api/generate` - Generate populated document
-- `POST /api/chat` - Conversational AI interface for gathering NDA information
+- `POST /api/chat` - Conversational AI interface for gathering document information
 
 ## Design Direction
 
@@ -139,9 +143,9 @@ This is an experimental prototype built using agentic coding workflows.
 - [x] CL-3: Prototype Mutual NDA creator
 - [x] CL-4: V1 technical foundation
 - [x] CL-5: AI chat interface (Mutual NDA only)
+- [x] CL-6: Multi-document support with catalog integration
 
 **Upcoming Phases:**
-- [ ] CL-6: Expand to all document types
 - [ ] CL-7: Multi-user support, PDF export, UI polish
 
 **License:** MIT (for code); CC BY 4.0 (for templates)

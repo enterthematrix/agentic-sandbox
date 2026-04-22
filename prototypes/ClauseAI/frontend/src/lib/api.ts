@@ -33,6 +33,18 @@ export interface ChatResponse {
   is_complete: boolean;
 }
 
+export interface TemplateInfo {
+  name: string;
+  description: string;
+  filename: string;
+  supported: boolean;
+}
+
+export interface TemplateListResponse {
+  templates: TemplateInfo[];
+  total: number;
+}
+
 export async function generateDocument(
   documentType: string,
   formData: FormData
@@ -88,6 +100,16 @@ export async function sendChatMessage(
 
   if (!res.ok) {
     throw new Error(`Failed to send chat message: ${res.statusText}`);
+  }
+
+  return res.json();
+}
+
+export async function getTemplates(): Promise<TemplateListResponse> {
+  const res = await fetch(`${API_BASE}/api/templates`);
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch templates: ${res.statusText}`);
   }
 
   return res.json();

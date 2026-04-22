@@ -6,7 +6,11 @@ import ChatInterface from './ChatInterface';
 
 type InputMode = 'form' | 'chat';
 
-export default function NDAForm() {
+interface NDAFormProps {
+  documentType: string;
+}
+
+export default function NDAForm({ documentType }: NDAFormProps) {
   const [inputMode, setInputMode] = useState<InputMode>('form');
   const [formData, setFormData] = useState<FormData>({
     purpose: 'Exploring a potential business partnership',
@@ -27,7 +31,7 @@ export default function NDAForm() {
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
-      const result = await generateDocument('Mutual-NDA', formData);
+      const result = await generateDocument(documentType, formData);
       setPreview(result.content);
     } catch (error) {
       console.error('Failed to generate document:', error);
@@ -40,7 +44,7 @@ export default function NDAForm() {
   const handleDownload = async () => {
     setIsGenerating(true);
     try {
-      const result = await generateDocument('Mutual-NDA', formData);
+      const result = await generateDocument(documentType, formData);
       const blob = new Blob([result.content], { type: 'text/markdown' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -63,7 +67,7 @@ export default function NDAForm() {
     setInputMode('form');
     setIsGenerating(true);
     try {
-      const result = await generateDocument('Mutual-NDA', chatFormData);
+      const result = await generateDocument(documentType, chatFormData);
       setPreview(result.content);
     } catch (error) {
       console.error('Failed to generate document:', error);
@@ -100,8 +104,8 @@ export default function NDAForm() {
       </div>
 
       {inputMode === 'chat' ? (
-        <ChatInterface onComplete={handleChatComplete} documentType="Mutual-NDA" />
-      ) : (
+        <ChatInterface onComplete={handleChatComplete} documentType={documentType} />
+      ) : documentType === 'Mutual-NDA.md' ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Form Panel */}
           <div className="bg-white rounded-lg border border-[var(--stroke)] p-6">
@@ -232,6 +236,19 @@ export default function NDAForm() {
           </p>
         )}
       </div>
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg border border-[var(--stroke)] p-8 text-center">
+          <h2 className="text-xl font-semibold mb-4 text-[var(--deep-navy)]">Document Type Not Yet Supported</h2>
+          <p className="text-[var(--slate-gray)] mb-6">
+            Manual form entry is currently only available for Mutual NDAs. Please use the AI Chat Assistant tab to explore other document types, or select Mutual NDA from the document selector above.
+          </p>
+          <button
+            onClick={() => setInputMode('chat')}
+            className="px-6 py-3 bg-[var(--steel-blue)] text-white font-medium rounded-lg hover:bg-[var(--deep-navy)] transition-colors"
+          >
+            Switch to AI Chat
+          </button>
         </div>
       )}
     </div>
