@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.Python
+venv/
+ENV/
+clauseai.db
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.log
+
+# Backend static (built frontend)
+backend/static/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
