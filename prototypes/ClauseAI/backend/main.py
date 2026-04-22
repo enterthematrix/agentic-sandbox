@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -9,6 +9,9 @@ from typing import Optional, List
 import os
 import json
 from anthropic import Anthropic
+import markdown
+from weasyprint import HTML
+from io import BytesIO
 
 import database
 
@@ -45,9 +48,17 @@ class FormData(BaseModel):
     governing_law: str
     jurisdiction: str
 
+class LoginRequest(BaseModel):
+    username: str
+
+class LoginResponse(BaseModel):
+    user_id: str
+    username: str
+
 class SessionCreate(BaseModel):
     document_type: str
     form_data: FormData
+    user_id: str
 
 class SessionResponse(BaseModel):
     id: str
@@ -55,6 +66,10 @@ class SessionResponse(BaseModel):
     form_data: FormData
     created_at: str
     updated_at: str
+
+class SessionListResponse(BaseModel):
+    sessions: List[SessionResponse]
+    total: int
 
 class PopulatedDocument(BaseModel):
     content: str
@@ -119,6 +134,15 @@ async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "service": "ClauseAI"}
 
+@app.post("/api/auth/login", response_model=LoginResponse)
+async def login(request: LoginRequest):
+    """Simple username-based login (prototype auth)."""
+    if not request.username or len(request.username.strip()) == 0:
+        raise HTTPException(status_code=400, detail="Username required")
+
+    user_id = database.create_or_get_user(request.username.strip())
+    return LoginResponse(user_id=user_id, username=request.username.strip())
+
 @app.get("/api/templates", response_model=TemplateListResponse)
 async def list_templates():
     """List all available document templates."""
@@ -137,12 +161,20 @@ async def list_templates():
 
     return TemplateListResponse(templates=templates, total=len(templates))
 
+@app.get("/api/users/{user_id}/sessions", response_model=SessionListResponse)
+async def list_user_sessions(user_id: str):
+    """Get all sessions for a user."""
+    sessions = database.get_user_sessions(user_id)
+    session_responses = [SessionResponse(**s) for s in sessions]
+    return SessionListResponse(sessions=session_responses, total=len(session_responses))
+
 @app.post("/api/sessions", response_model=SessionResponse)
 async def create_session(session_data: SessionCreate):
     """Create a new session."""
     session_id = str(uuid.uuid4())
     database.save_session(
         session_id,
+        session_data.user_id,
         session_data.document_type,
         session_data.form_data.model_dump()
     )
@@ -171,6 +203,7 @@ async def update_session(session_id: str, session_data: SessionCreate):
 
     database.save_session(
         session_id,
+        session_data.user_id,
         session_data.document_type,
         session_data.form_data.model_dump()
     )
@@ -196,6 +229,62 @@ async def generate_document(session_data: SessionCreate):
     filename = f"{session_data.document_type}.md"
 
     return PopulatedDocument(content=populated, filename=filename)
+
+@app.post("/api/generate/pdf")
+async def generate_pdf(session_data: SessionCreate):
+    """Generate a PDF document from template and form data."""
+    template = load_template(session_data.document_type)
+    populated = populate_template(template, session_data.form_data)
+
+    # Convert markdown to HTML
+    html_content = markdown.markdown(populated, extensions=['extra', 'nl2br'])
+
+    # Add CSS styling for professional look
+    styled_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body {{
+                font-family: 'Georgia', 'Times New Roman', serif;
+                line-height: 1.6;
+                max-width: 800px;
+                margin: 40px auto;
+                padding: 20px;
+                color: #0A1929;
+            }}
+            h1, h2, h3 {{
+                color: #0A1929;
+                margin-top: 24px;
+            }}
+            h1 {{ font-size: 24px; border-bottom: 2px solid #1E4976; padding-bottom: 8px; }}
+            h2 {{ font-size: 20px; }}
+            h3 {{ font-size: 16px; }}
+            p {{ margin: 12px 0; }}
+            .highlight {{
+                background-color: #FFF9E6;
+                padding: 2px 4px;
+                font-weight: bold;
+            }}
+        </style>
+    </head>
+    <body>
+        {html_content}
+    </body>
+    </html>
+    """
+
+    # Generate PDF
+    pdf_bytes = HTML(string=styled_html).write_pdf()
+
+    filename = f"{session_data.document_type}.pdf"
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):

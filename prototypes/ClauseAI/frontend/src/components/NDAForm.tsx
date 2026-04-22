@@ -1,16 +1,18 @@
 'use client';
 
-import { useState } from 'react';
-import { generateDocument, type FormData } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { generateDocument, generatePDF, createSession, type FormData, type SessionResponse } from '@/lib/api';
 import ChatInterface from './ChatInterface';
 
 type InputMode = 'form' | 'chat';
 
 interface NDAFormProps {
   documentType: string;
+  userId: string;
+  initialSession?: SessionResponse | null;
 }
 
-export default function NDAForm({ documentType }: NDAFormProps) {
+export default function NDAForm({ documentType, userId, initialSession }: NDAFormProps) {
   const [inputMode, setInputMode] = useState<InputMode>('form');
   const [formData, setFormData] = useState<FormData>({
     purpose: 'Exploring a potential business partnership',
@@ -23,6 +25,13 @@ export default function NDAForm({ documentType }: NDAFormProps) {
 
   const [preview, setPreview] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (initialSession) {
+      setFormData(initialSession.form_data);
+    }
+  }, [initialSession]);
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -31,7 +40,7 @@ export default function NDAForm({ documentType }: NDAFormProps) {
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
-      const result = await generateDocument(documentType, formData);
+      const result = await generateDocument(documentType, formData, userId);
       setPreview(result.content);
     } catch (error) {
       console.error('Failed to generate document:', error);
@@ -41,10 +50,23 @@ export default function NDAForm({ documentType }: NDAFormProps) {
     }
   };
 
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await createSession(documentType, formData, userId);
+      alert('Document saved successfully!');
+    } catch (error) {
+      console.error('Failed to save document:', error);
+      alert('Failed to save document. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleDownload = async () => {
     setIsGenerating(true);
     try {
-      const result = await generateDocument(documentType, formData);
+      const result = await generateDocument(documentType, formData, userId);
       const blob = new Blob([result.content], { type: 'text/markdown' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -62,12 +84,32 @@ export default function NDAForm({ documentType }: NDAFormProps) {
     }
   };
 
+  const handleDownloadPDF = async () => {
+    setIsGenerating(true);
+    try {
+      const blob = await generatePDF(documentType, formData, userId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${documentType}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to download PDF:', error);
+      alert('Failed to download PDF. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleChatComplete = async (chatFormData: FormData) => {
     setFormData(chatFormData);
     setInputMode('form');
     setIsGenerating(true);
     try {
-      const result = await generateDocument(documentType, chatFormData);
+      const result = await generateDocument(documentType, chatFormData, userId);
       setPreview(result.content);
     } catch (error) {
       console.error('Failed to generate document:', error);
@@ -204,21 +246,39 @@ export default function NDAForm({ documentType }: NDAFormProps) {
             </p>
           </div>
 
-          <div className="flex gap-3 pt-4">
-            <button
-              onClick={handleGenerate}
-              disabled={isGenerating}
-              className="flex-1 bg-[var(--steel-blue)] text-white py-3 rounded-lg font-medium hover:bg-[var(--deep-navy)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {isGenerating ? 'Generating...' : 'Preview Document'}
-            </button>
-            <button
-              onClick={handleDownload}
-              disabled={isGenerating}
-              className="flex-1 bg-[var(--success-green)] text-white py-3 rounded-lg font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-            >
-              {isGenerating ? 'Downloading...' : 'Download'}
-            </button>
+          <div className="space-y-3 pt-4">
+            <div className="flex gap-3">
+              <button
+                onClick={handleGenerate}
+                disabled={isGenerating || isSaving}
+                className="flex-1 bg-[var(--steel-blue)] text-white py-3 rounded-lg font-medium hover:bg-[var(--deep-navy)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isGenerating ? 'Generating...' : 'Preview Document'}
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={isGenerating || isSaving}
+                className="flex-1 bg-[var(--gold-accent)] text-white py-3 rounded-lg font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+              >
+                {isSaving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={handleDownload}
+                disabled={isGenerating || isSaving}
+                className="flex-1 bg-[var(--success-green)] text-white py-3 rounded-lg font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+              >
+                Download Markdown
+              </button>
+              <button
+                onClick={handleDownloadPDF}
+                disabled={isGenerating || isSaving}
+                className="flex-1 bg-[var(--success-green)] text-white py-3 rounded-lg font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+              >
+                Download PDF
+              </button>
+            </div>
           </div>
         </div>
       </div>
