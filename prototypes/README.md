@@ -18,6 +18,21 @@ A full-stack, AI-augmented Kanban board application.
 - AI sidebar for natural language board management
 - Drag-and-drop task management
 
+### [ClauseAI](./ClauseAI)
+AI-powered legal document assistant for generating professional legal agreements.
+
+**Stack:**
+- Frontend: Next.js (TypeScript, React) + Tailwind CSS
+- Backend: FastAPI (Python) + SQLite
+- AI: Claude API for intelligent document generation
+
+**Key Features:**
+- Conversational AI interface for document creation
+- Template library from CommonPaper (CC BY 4.0)
+- Real-time document preview and editing
+- Multi-user support with document dashboard
+- PDF export capability
+
 ---
 
 ## About This Directory
