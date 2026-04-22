@@ -1,0 +1,87 @@
+{
+  "templates": [
+    {
+      "name": "Mutual NDA",
+      "description": "Standard mutual non-disclosure agreement for protecting confidential information shared between parties",
+      "filename": "Mutual-NDA.md",
+      "repository": "https://github.com/CommonPaper/Mutual-NDA",
+      "version": "1.0"
+    },
+    {
+      "name": "Professional Services Agreement",
+      "description": "Standard agreement for professional services engagements, covering SOW terms, deliverables, and payment",
+      "filename": "psa.md",
+      "repository": "https://github.com/CommonPaper/PSA",
+      "version": "1.1"
+    },
+    {
+      "name": "Data Processing Agreement",
+      "description": "Agreement for data processing activities, ensuring GDPR and privacy compliance",
+      "filename": "DPA.md",
+      "repository": "https://github.com/CommonPaper/DPA",
+      "version": "1.0"
+    },
+    {
+      "name": "Cloud Service Agreement",
+      "description": "Standard agreement for cloud-based software services and SaaS products",
+      "filename": "CSA.md",
+      "repository": "https://github.com/CommonPaper/CSA",
+      "version": "1.0"
+    },
+    {
+      "name": "Software License Agreement",
+      "description": "Standard on-premises software licensing agreement covering installation and usage rights",
+      "filename": "Software-License-Agreement.md",
+      "repository": "https://github.com/CommonPaper/Software-License-Agreement",
+      "version": "1.0"
+    },
+    {
+      "name": "Service Level Agreement",
+      "description": "Service level commitment defining availability, performance metrics, and remedies",
+      "filename": "sla.md",
+      "repository": "https://github.com/CommonPaper/SLA",
+      "version": "1.0"
+    },
+    {
+      "name": "Business Associate Agreement",
+      "description": "HIPAA-compliant agreement for handling protected health information (PHI)",
+      "filename": "BAA.md",
+      "repository": "https://github.com/CommonPaper/BAA",
+      "version": "1.0"
+    },
+    {
+      "name": "Partnership Agreement",
+      "description": "Strategic partnership agreement for collaboration and co-selling arrangements",
+      "filename": "Partnership-Agreement.md",
+      "repository": "https://github.com/CommonPaper/Partnership-Agreement",
+      "version": "1.0"
+    },
+    {
+      "name": "Pilot Agreement",
+      "description": "Trial or proof-of-concept agreement for limited-term product evaluation",
+      "filename": "Pilot-Agreement.md",
+      "repository": "https://github.com/CommonPaper/Pilot-Agreement",
+      "version": "1.0"
+    },
+    {
+      "name": "AI Addendum",
+      "description": "Supplemental terms for AI and machine learning services, covering model training and data usage",
+      "filename": "AI-Addendum.md",
+      "repository": "https://github.com/CommonPaper/AI-Addendum",
+      "version": "1.0"
+    },
+    {
+      "name": "Design Partner Agreement",
+      "description": "Early-stage collaboration agreement for design partners providing product feedback",
+      "filename": "design-partner-agreement.md",
+      "repository": "https://github.com/CommonPaper/Design-Partner-Agreement",
+      "version": "1.0"
+    }
+  ],
+  "metadata": {
+    "source": "CommonPaper",
+    "license": "CC BY 4.0",
+    "last_updated": "2026-04-22",
+    "total_templates": 11
+  }
+}
