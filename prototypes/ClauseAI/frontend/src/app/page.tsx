@@ -2,8 +2,11 @@
 
 import { useState } from 'react';
 import NDAForm from '@/components/NDAForm';
+import DocumentTypeSelector from '@/components/DocumentTypeSelector';
 
 export default function Home() {
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('Mutual-NDA.md');
+
   return (
     <main>
       <header className="bg-[var(--deep-navy)] text-white">
@@ -14,7 +17,8 @@ export default function Home() {
       </header>
 
       <div className="max-w-7xl mx-auto px-8 py-8">
-        <NDAForm />
+        <DocumentTypeSelector value={selectedTemplate} onChange={setSelectedTemplate} />
+        <NDAForm documentType={selectedTemplate} />
       </div>
 
       <footer className="mt-16 py-6 border-t border-[var(--stroke)] text-center text-sm text-[var(--slate-gray)]">

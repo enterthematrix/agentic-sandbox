@@ -17,6 +17,11 @@ app = FastAPI(title="ClauseAI API")
 # Initialize Claude API client
 anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY", ""))
 
+# Load catalog
+CATALOG_PATH = Path(__file__).parent.parent / "catalog.json"
+with open(CATALOG_PATH, "r") as f:
+    CATALOG = json.load(f)
+
 # CORS middleware for development
 app.add_middleware(
     CORSMiddleware,
@@ -54,6 +59,16 @@ class SessionResponse(BaseModel):
 class PopulatedDocument(BaseModel):
     content: str
     filename: str
+
+class TemplateInfo(BaseModel):
+    name: str
+    description: str
+    filename: str
+    supported: bool
+
+class TemplateListResponse(BaseModel):
+    templates: List[TemplateInfo]
+    total: int
 
 class ChatMessage(BaseModel):
     role: str
@@ -103,6 +118,24 @@ def populate_template(template: str, form_data: FormData) -> str:
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "service": "ClauseAI"}
+
+@app.get("/api/templates", response_model=TemplateListResponse)
+async def list_templates():
+    """List all available document templates."""
+    # Currently only Mutual NDA is fully supported
+    supported_templates = {"Mutual-NDA.md"}
+
+    templates = [
+        TemplateInfo(
+            name=t["name"],
+            description=t["description"],
+            filename=t["filename"],
+            supported=t["filename"] in supported_templates
+        )
+        for t in CATALOG["templates"]
+    ]
+
+    return TemplateListResponse(templates=templates, total=len(templates))
 
 @app.post("/api/sessions", response_model=SessionResponse)
 async def create_session(session_data: SessionCreate):
@@ -166,9 +199,17 @@ async def generate_document(session_data: SessionCreate):
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    """Chat with AI to gather NDA information conversationally."""
+    """Chat with AI to gather document information conversationally."""
     if not os.getenv("ANTHROPIC_API_KEY"):
         raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured")
+
+    # Check if requested document type is supported
+    if request.document_type != "Mutual-NDA":
+        return ChatResponse(
+            message=f"I appreciate your interest in creating a {request.document_type}! Currently, I can only help with Mutual NDAs through the conversational interface. However, we have templates available for {len(CATALOG['templates'])} document types including Professional Services Agreements, Data Processing Agreements, and more. Would you like to create a Mutual NDA instead, or would you prefer to wait for full support of other document types?",
+            form_data=None,
+            is_complete=False
+        )
 
     system_prompt = """You are a helpful legal document assistant for ClauseAI. Your job is to gather information for creating a Mutual NDA by asking friendly, conversational questions.
 
