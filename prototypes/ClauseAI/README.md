@@ -18,23 +18,78 @@ ClauseAI transforms complex legal document creation into a simple, conversationa
 
 ## Project Status
 
-This project is in active development. See [PLAN.md](./PLAN.md) for the complete roadmap.
+**Current Version:** V1 Foundation (CL-4)
 
-**Current Phase:** CL-1 (Foundation)
+This implementation establishes the technical foundation with formal frontend/backend separation, database persistence, and development automation.
 
-**Planned Features:**
-- Conversational AI chat interface for document creation
-- Template library covering common legal agreements
-- Real-time document preview and editing
-- Multi-user support with document management dashboard
-- PDF export for professional delivery
+**Features:**
+- Web-based Mutual NDA creator
+- Real-time document preview
+- Session persistence (SQLite)
+- Download as markdown
+- Professional legal-tech UI
 
-## Technology Vision
+## Architecture
 
-**Frontend:** Next.js with TypeScript, React, and Tailwind CSS  
+**Frontend:** Next.js 16 with TypeScript, React 19, Tailwind CSS v4  
 **Backend:** FastAPI (Python) with SQLite  
-**AI:** Claude API for intelligent document generation  
-**Deployment:** Docker containerization for local and cloud deployment
+**Deployment:** Docker containerization
+
+### Project Structure
+
+```
+ClauseAI/
+├── frontend/           # Next.js application (static export)
+│   ├── src/
+│   │   ├── app/       # Next.js app router
+│   │   ├── components/# React components
+│   │   └── lib/       # API client
+│   └── package.json
+├── backend/           # FastAPI application
+│   ├── main.py        # API routes
+│   ├── database.py    # SQLite operations
+│   └── requirements.txt
+├── templates/         # Legal document templates
+├── scripts/           # Automation scripts
+│   ├── start.sh       # Start dev environment
+│   └── stop.sh        # Stop dev environment
+├── prototype/         # Original CL-3 prototype
+└── Dockerfile         # Multi-stage container build
+```
+
+## Quick Start
+
+### Development
+
+```bash
+# Start the development environment
+cd prototypes/ClauseAI
+bash scripts/start.sh
+```
+
+The application will be available at http://localhost:8000
+
+### Stop
+
+```bash
+bash scripts/stop.sh
+```
+
+### Docker
+
+```bash
+docker build -t clauseai .
+docker run -p 8000:8000 clauseai
+```
+
+## API Endpoints
+
+- `GET /api/health` - Health check
+- `POST /api/sessions` - Create a new session
+- `GET /api/sessions/{id}` - Retrieve a session
+- `PUT /api/sessions/{id}` - Update a session
+- `DELETE /api/sessions/{id}` - Delete a session
+- `POST /api/generate` - Generate populated document
 
 ## Design Direction
 
@@ -59,10 +114,17 @@ All document templates are sourced from CommonPaper (https://github.com/CommonPa
 
 ## Development
 
-This is an experimental prototype built using agentic coding workflows within the [agentic-sandbox](../../) project.
+This is an experimental prototype built using agentic coding workflows.
 
-**Documentation:**
-- [PLAN.md](./PLAN.md) - Development roadmap with 7-phase implementation
-- More documentation will be added as the project evolves
+**Completed Phases:**
+- [x] CL-1: Project README and documentation
+- [x] CL-2: Legal document template dataset (11 templates)
+- [x] CL-3: Prototype Mutual NDA creator
+- [x] CL-4: V1 technical foundation
+
+**Upcoming Phases:**
+- [ ] CL-5: AI chat interface (Mutual NDA only)
+- [ ] CL-6: Expand to all document types
+- [ ] CL-7: Multi-user support, PDF export, UI polish
 
 **License:** MIT (for code); CC BY 4.0 (for templates)
