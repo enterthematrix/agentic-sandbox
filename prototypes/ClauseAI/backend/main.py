@@ -5,11 +5,17 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from pathlib import Path
 import uuid
-from typing import Optional
+from typing import Optional, List
+import os
+import json
+from anthropic import Anthropic
 
 import database
 
 app = FastAPI(title="ClauseAI API")
+
+# Initialize Claude API client
+anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY", ""))
 
 # CORS middleware for development
 app.add_middleware(
@@ -48,6 +54,19 @@ class SessionResponse(BaseModel):
 class PopulatedDocument(BaseModel):
     content: str
     filename: str
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage]
+    document_type: str = "Mutual-NDA"
+
+class ChatResponse(BaseModel):
+    message: str
+    form_data: Optional[FormData] = None
+    is_complete: bool = False
 
 # Template loader
 def load_template(document_type: str) -> str:
@@ -144,6 +163,75 @@ async def generate_document(session_data: SessionCreate):
     filename = f"{session_data.document_type}.md"
 
     return PopulatedDocument(content=populated, filename=filename)
+
+@app.post("/api/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest):
+    """Chat with AI to gather NDA information conversationally."""
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured")
+
+    system_prompt = """You are a helpful legal document assistant for ClauseAI. Your job is to gather information for creating a Mutual NDA by asking friendly, conversational questions.
+
+Required fields to collect:
+1. purpose - The business purpose for sharing confidential information
+2. effective_date - When the agreement starts (format: YYYY-MM-DD)
+3. mnda_term - Duration of the agreement (e.g., "2 years")
+4. confidentiality_term - How long confidential information must remain protected (e.g., "5 years")
+5. governing_law - US State whose laws govern the agreement (e.g., "California")
+6. jurisdiction - Location for resolving legal disputes (e.g., "San Francisco, California")
+
+Guidelines:
+- Ask questions in a natural, conversational manner
+- Ask for one or two fields at a time, not all at once
+- Provide helpful examples when appropriate
+- Be friendly and professional
+- When you have all required information, confirm the details with the user
+- Once confirmed, respond with ONLY a JSON object in this exact format:
+{
+  "purpose": "value",
+  "effective_date": "YYYY-MM-DD",
+  "mnda_term": "value",
+  "confidentiality_term": "value",
+  "governing_law": "value",
+  "jurisdiction": "value"
+}"""
+
+    try:
+        # Convert messages to Anthropic format
+        messages = [{"role": msg.role, "content": msg.content} for msg in request.messages]
+
+        response = anthropic_client.messages.create(
+            model="claude-sonnet-4-5-20250929-v1:0",
+            max_tokens=1024,
+            system=system_prompt,
+            messages=messages
+        )
+
+        assistant_message = response.content[0].text
+
+        # Check if response contains JSON (indicating completion)
+        try:
+            # Try to parse as JSON
+            if assistant_message.strip().startswith("{"):
+                data = json.loads(assistant_message)
+                form_data = FormData(**data)
+                return ChatResponse(
+                    message="Great! I have all the information I need. Here's what I gathered:",
+                    form_data=form_data,
+                    is_complete=True
+                )
+        except (json.JSONDecodeError, Exception):
+            pass
+
+        # Normal conversational response
+        return ChatResponse(
+            message=assistant_message,
+            form_data=None,
+            is_complete=False
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
 
 # Serve frontend static files
 static_dir = Path(__file__).parent / "static"

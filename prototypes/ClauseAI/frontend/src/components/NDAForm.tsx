@@ -1,7 +1,13 @@
+'use client';
+
 import { useState } from 'react';
 import { generateDocument, type FormData } from '@/lib/api';
+import ChatInterface from './ChatInterface';
+
+type InputMode = 'form' | 'chat';
 
 export default function NDAForm() {
+  const [inputMode, setInputMode] = useState<InputMode>('form');
   const [formData, setFormData] = useState<FormData>({
     purpose: 'Exploring a potential business partnership',
     effective_date: new Date().toISOString().split('T')[0],
@@ -52,11 +58,54 @@ export default function NDAForm() {
     }
   };
 
+  const handleChatComplete = async (chatFormData: FormData) => {
+    setFormData(chatFormData);
+    setInputMode('form');
+    setIsGenerating(true);
+    try {
+      const result = await generateDocument('Mutual-NDA', chatFormData);
+      setPreview(result.content);
+    } catch (error) {
+      console.error('Failed to generate document:', error);
+      alert('Failed to generate document. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      {/* Form Panel */}
-      <div className="bg-white rounded-lg border border-[var(--stroke)] p-6">
-        <h2 className="text-xl font-semibold mb-6 text-[var(--deep-navy)]">Mutual NDA Details</h2>
+    <div className="space-y-6">
+      {/* Mode Selector */}
+      <div className="flex gap-2 border-b border-[var(--stroke)]">
+        <button
+          onClick={() => setInputMode('form')}
+          className={`px-6 py-3 font-medium transition-colors ${
+            inputMode === 'form'
+              ? 'text-[var(--steel-blue)] border-b-2 border-[var(--steel-blue)]'
+              : 'text-[var(--slate-gray)] hover:text-[var(--steel-blue)]'
+          }`}
+        >
+          Manual Form
+        </button>
+        <button
+          onClick={() => setInputMode('chat')}
+          className={`px-6 py-3 font-medium transition-colors ${
+            inputMode === 'chat'
+              ? 'text-[var(--steel-blue)] border-b-2 border-[var(--steel-blue)]'
+              : 'text-[var(--slate-gray)] hover:text-[var(--steel-blue)]'
+          }`}
+        >
+          AI Chat Assistant
+        </button>
+      </div>
+
+      {inputMode === 'chat' ? (
+        <ChatInterface onComplete={handleChatComplete} documentType="Mutual-NDA" />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Form Panel */}
+          <div className="bg-white rounded-lg border border-[var(--stroke)] p-6">
+            <h2 className="text-xl font-semibold mb-6 text-[var(--deep-navy)]">Mutual NDA Details</h2>
 
         <div className="space-y-4">
           <div>
@@ -183,6 +232,8 @@ export default function NDAForm() {
           </p>
         )}
       </div>
+        </div>
+      )}
     </div>
   );
 }
