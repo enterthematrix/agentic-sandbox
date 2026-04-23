@@ -2,6 +2,7 @@ import sqlite3
 import json
 from pathlib import Path
 from datetime import datetime
+from typing import Optional, List
 
 DB_PATH = Path(__file__).parent / "clauseai.db"
 
@@ -78,7 +79,7 @@ def save_session(session_id: str, user_id: str, document_type: str, form_data: d
     conn.commit()
     conn.close()
 
-def get_session(session_id: str) -> dict | None:
+def get_session(session_id: str) -> Optional[dict]:
     """Retrieve a session by ID."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -103,7 +104,7 @@ def get_session(session_id: str) -> dict | None:
         "updated_at": row[3]
     }
 
-def get_user_sessions(user_id: str) -> list[dict]:
+def get_user_sessions(user_id: str) -> List[dict]:
     """Get all sessions for a user."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()

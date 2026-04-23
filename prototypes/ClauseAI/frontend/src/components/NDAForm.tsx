@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { generateDocument, generatePDF, createSession, type FormData, type SessionResponse } from '@/lib/api';
 import ChatInterface from './ChatInterface';
+import ReactMarkdown from 'react-markdown';
 
 type InputMode = 'form' | 'chat';
 
@@ -147,7 +148,7 @@ export default function NDAForm({ documentType, userId, initialSession }: NDAFor
 
       {inputMode === 'chat' ? (
         <ChatInterface onComplete={handleChatComplete} documentType={documentType} />
-      ) : documentType === 'Mutual-NDA.md' ? (
+      ) : documentType === 'Mutual-NDA' ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Form Panel */}
           <div className="bg-white rounded-lg border border-[var(--stroke)] p-6">
@@ -287,12 +288,29 @@ export default function NDAForm({ documentType, userId, initialSession }: NDAFor
       <div className="bg-white rounded-lg border border-[var(--stroke)] p-6">
         <h2 className="text-xl font-semibold mb-6 text-[var(--deep-navy)]">Document Preview</h2>
         {preview ? (
-          <div className="prose prose-sm max-w-none">
-            <pre className="whitespace-pre-wrap text-sm leading-relaxed">{preview}</pre>
+          <div className="pdf-preview bg-white border border-gray-200 rounded shadow-sm p-8 max-h-[800px] overflow-y-auto">
+            <div className="markdown-body">
+              <ReactMarkdown
+                components={{
+                  h1: ({...props}) => <h1 className="text-2xl font-bold mb-6 text-gray-900" {...props} />,
+                  h2: ({...props}) => <h2 className="text-xl font-semibold mb-4 mt-6 text-gray-900" {...props} />,
+                  h3: ({...props}) => <h3 className="text-lg font-semibold mb-3 mt-4 text-gray-900" {...props} />,
+                  p: ({...props}) => <p className="text-sm leading-relaxed mb-4 text-gray-800" {...props} />,
+                  ul: ({...props}) => <ul className="list-disc ml-6 mb-4 text-sm text-gray-800" {...props} />,
+                  ol: ({...props}) => <ol className="list-decimal ml-6 mb-4 text-sm text-gray-800" {...props} />,
+                  li: ({...props}) => <li className="mb-2 leading-relaxed" {...props} />,
+                  strong: ({...props}) => <strong className="font-semibold text-gray-900" {...props} />,
+                  em: ({...props}) => <em className="italic" {...props} />,
+                  blockquote: ({...props}) => <blockquote className="border-l-4 border-gray-300 pl-4 italic my-4 text-gray-700" {...props} />,
+                }}
+              >
+                {preview}
+              </ReactMarkdown>
+            </div>
           </div>
         ) : (
           <p className="text-[var(--slate-gray)] text-sm">
-            Click &quot;Preview Document&quot; to see the populated NDA with your details.
+            Click &quot;Preview Document&quot; to see the populated document with your details.
           </p>
         )}
       </div>

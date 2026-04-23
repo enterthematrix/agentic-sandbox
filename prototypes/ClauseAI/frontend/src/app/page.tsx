@@ -13,7 +13,7 @@ export default function Home() {
   const [userId, setUserId] = useState<string | null>(null);
   const [username, setUsername] = useState<string>('');
   const [view, setView] = useState<View>('dashboard');
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('Mutual-NDA.md');
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('Mutual-NDA');
   const [selectedSession, setSelectedSession] = useState<SessionResponse | null>(null);
 
   const handleLogin = (uid: string, uname: string) => {
@@ -30,7 +30,7 @@ export default function Home() {
 
   const handleNewDocument = () => {
     setSelectedSession(null);
-    setSelectedTemplate('Mutual-NDA.md');
+    setSelectedTemplate('Mutual-NDA');
     setView('editor');
   };
 

@@ -8,20 +8,30 @@ import uuid
 from typing import Optional, List
 import os
 import json
-from anthropic import Anthropic
+import httpx
 import markdown
-from weasyprint import HTML
+from dotenv import load_dotenv
+try:
+    from weasyprint import HTML
+    WEASYPRINT_AVAILABLE = True
+except (ImportError, OSError):
+    WEASYPRINT_AVAILABLE = False
 from io import BytesIO
 
 import database
 
+# Load environment variables
+load_dotenv()
+
 app = FastAPI(title="ClauseAI API")
 
-# Initialize Claude API client
-anthropic_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY", ""))
+# OpenRouter API key
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-# Load catalog
-CATALOG_PATH = Path(__file__).parent.parent / "catalog.json"
+# Load catalog (check both Docker and native paths)
+CATALOG_PATH = Path(__file__).parent / "catalog.json"
+if not CATALOG_PATH.exists():
+    CATALOG_PATH = Path(__file__).parent.parent / "catalog.json"
 with open(CATALOG_PATH, "r") as f:
     CATALOG = json.load(f)
 
@@ -101,7 +111,9 @@ class ChatResponse(BaseModel):
 # Template loader
 def load_template(document_type: str) -> str:
     """Load a document template from the templates directory."""
-    templates_dir = Path(__file__).parent.parent / "templates"
+    templates_dir = Path(__file__).parent / "templates"
+    if not templates_dir.exists():
+        templates_dir = Path(__file__).parent.parent / "templates"
     template_path = templates_dir / f"{document_type}.md"
 
     if not template_path.exists():
@@ -146,8 +158,9 @@ async def login(request: LoginRequest):
 @app.get("/api/templates", response_model=TemplateListResponse)
 async def list_templates():
     """List all available document templates."""
-    # Currently only Mutual NDA is fully supported
-    supported_templates = {"Mutual-NDA.md"}
+    # All templates are supported via AI chat interface
+    # Manual forms are only available for Mutual NDA
+    supported_templates = {t["filename"] for t in CATALOG["templates"]}
 
     templates = [
         TemplateInfo(
@@ -233,6 +246,12 @@ async def generate_document(session_data: SessionCreate):
 @app.post("/api/generate/pdf")
 async def generate_pdf(session_data: SessionCreate):
     """Generate a PDF document from template and form data."""
+    if not WEASYPRINT_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="PDF export is not available. WeasyPrint system dependencies are not installed. Please install with: brew install pango"
+        )
+
     template = load_template(session_data.document_type)
     populated = populate_template(template, session_data.form_data)
 
@@ -286,65 +305,77 @@ async def generate_pdf(session_data: SessionCreate):
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 
-@app.post("/api/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
-    """Chat with AI to gather document information conversationally."""
-    if not os.getenv("ANTHROPIC_API_KEY"):
-        raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured")
+def get_system_prompt_for_document(document_type: str) -> str:
+    """Generate system prompt based on document type."""
+    # Find document info from catalog
+    doc_info = next((t for t in CATALOG["templates"] if t["filename"] == document_type), None)
+    doc_name = doc_info["name"] if doc_info else document_type
 
-    # Check if requested document type is supported
-    if request.document_type != "Mutual-NDA":
-        return ChatResponse(
-            message=f"I appreciate your interest in creating a {request.document_type}! Currently, I can only help with Mutual NDAs through the conversational interface. However, we have templates available for {len(CATALOG['templates'])} document types including Professional Services Agreements, Data Processing Agreements, and more. Would you like to create a Mutual NDA instead, or would you prefer to wait for full support of other document types?",
-            form_data=None,
-            is_complete=False
-        )
-
-    system_prompt = """You are a helpful legal document assistant for ClauseAI. Your job is to gather information for creating a Mutual NDA by asking friendly, conversational questions.
+    return f"""You are a helpful legal document assistant for ClauseAI. Your job is to gather information for creating a {doc_name} by asking friendly, conversational questions.
 
 Required fields to collect:
-1. purpose - The business purpose for sharing confidential information
+1. purpose - The business purpose or context for this {doc_name}
 2. effective_date - When the agreement starts (format: YYYY-MM-DD)
 3. mnda_term - Duration of the agreement (e.g., "2 years")
-4. confidentiality_term - How long confidential information must remain protected (e.g., "5 years")
+4. confidentiality_term - How long terms must remain in effect (e.g., "5 years")
 5. governing_law - US State whose laws govern the agreement (e.g., "California")
 6. jurisdiction - Location for resolving legal disputes (e.g., "San Francisco, California")
 
 Guidelines:
-- Ask questions in a natural, conversational manner
+- Ask questions in a natural, conversational manner appropriate for a {doc_name}
 - Ask for one or two fields at a time, not all at once
 - Provide helpful examples when appropriate
 - Be friendly and professional
 - When you have all required information, confirm the details with the user
 - Once confirmed, respond with ONLY a JSON object in this exact format:
-{
+{{
   "purpose": "value",
   "effective_date": "YYYY-MM-DD",
   "mnda_term": "value",
   "confidentiality_term": "value",
   "governing_law": "value",
   "jurisdiction": "value"
-}"""
+}}"""
+
+@app.post("/api/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest):
+    """Chat with AI to gather document information conversationally."""
+    if not OPENROUTER_API_KEY:
+        raise HTTPException(status_code=500, detail="OPENROUTER_API_KEY not configured")
+
+    # Generate dynamic system prompt based on document type
+    system_prompt = get_system_prompt_for_document(request.document_type)
 
     try:
-        # Convert messages to Anthropic format
-        messages = [{"role": msg.role, "content": msg.content} for msg in request.messages]
+        # Convert messages to OpenRouter format
+        messages = [{"role": "system", "content": system_prompt}]
+        for msg in request.messages:
+            messages.append({"role": msg.role, "content": msg.content})
 
-        response = anthropic_client.messages.create(
-            model="claude-sonnet-4-5-20250929-v1:0",
-            max_tokens=1024,
-            system=system_prompt,
-            messages=messages
-        )
-
-        assistant_message = response.content[0].text
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "openai/gpt-oss-120b",
+                    "messages": messages,
+                    "max_tokens": 1024,
+                },
+                timeout=30.0
+            )
+            response.raise_for_status()
+            data = response.json()
+            assistant_message = data["choices"][0]["message"]["content"].strip()
 
         # Check if response contains JSON (indicating completion)
         try:
             # Try to parse as JSON
             if assistant_message.strip().startswith("{"):
-                data = json.loads(assistant_message)
-                form_data = FormData(**data)
+                form_data_dict = json.loads(assistant_message)
+                form_data = FormData(**form_data_dict)
                 return ChatResponse(
                     message="Great! I have all the information I need. Here's what I gathered:",
                     form_data=form_data,
