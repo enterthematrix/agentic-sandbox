@@ -18,23 +18,17 @@ ClauseAI transforms complex legal document creation into a simple, conversationa
 
 ## Project Status
 
-**Current Version:** Production-Ready Multi-User Platform (CL-7)
+**Current Version:** V1 with AI Chat (CL-5)
 
-ClauseAI is now a fully-featured, multi-user legal document creation platform. Users can sign in, create and save documents, manage their document library, and export professional PDFs.
+A conversational AI assistant powered by Claude helps users create Mutual NDAs through natural dialogue, making legal document creation accessible and intuitive.
 
 **Features:**
-- User authentication (username-based prototype)
-- Personal document dashboard for managing saved documents
-- 11 legal document templates from CommonPaper
-- Document type browser with detailed descriptions
-- AI chat interface for guided Mutual NDA creation
-- Manual form option for Mutual NDA direct input
-- Intelligent routing for unsupported document types
+- AI chat interface for guided NDA creation
+- Manual form option for direct input
 - Real-time document preview
-- Session persistence with user accounts (SQLite)
-- PDF export with professional formatting
+- Session persistence (SQLite)
 - Download as markdown
-- Polished legal-tech UI with professional styling
+- Professional legal-tech UI
 
 ## Architecture
 
@@ -106,26 +100,13 @@ docker run -p 8000:8000 clauseai
 
 ## API Endpoints
 
-**Authentication:**
-- `POST /api/auth/login` - Username-based login
-
-**Templates:**
-- `GET /api/templates` - List all available document templates with support status
-
-**Sessions:**
+- `GET /api/health` - Health check
 - `POST /api/sessions` - Create a new session
 - `GET /api/sessions/{id}` - Retrieve a session
-- `GET /api/users/{user_id}/sessions` - Get all sessions for a user
 - `PUT /api/sessions/{id}` - Update a session
 - `DELETE /api/sessions/{id}` - Delete a session
-
-**Document Generation:**
-- `POST /api/generate` - Generate populated document (markdown)
-- `POST /api/generate/pdf` - Generate populated document (PDF)
-- `POST /api/chat` - Conversational AI interface for gathering document information
-
-**System:**
-- `GET /api/health` - Health check
+- `POST /api/generate` - Generate populated document
+- `POST /api/chat` - Conversational AI interface for gathering NDA information
 
 ## Design Direction
 
@@ -158,9 +139,9 @@ This is an experimental prototype built using agentic coding workflows.
 - [x] CL-3: Prototype Mutual NDA creator
 - [x] CL-4: V1 technical foundation
 - [x] CL-5: AI chat interface (Mutual NDA only)
-- [x] CL-6: Multi-document support with catalog integration
-- [x] CL-7: Multi-user support, PDF export, UI polish
 
-All planned phases complete! ClauseAI is now a production-ready legal document creation platform.
+**Upcoming Phases:**
+- [ ] CL-6: Expand to all document types
+- [ ] CL-7: Multi-user support, PDF export, UI polish
 
 **License:** MIT (for code); CC BY 4.0 (for templates)

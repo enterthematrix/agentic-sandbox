@@ -17,8 +17,6 @@ export interface Session {
   updated_at: string;
 }
 
-export type SessionResponse = Session;
-
 export interface PopulatedDocument {
   content: string;
   filename: string;
@@ -35,22 +33,9 @@ export interface ChatResponse {
   is_complete: boolean;
 }
 
-export interface TemplateInfo {
-  name: string;
-  description: string;
-  filename: string;
-  supported: boolean;
-}
-
-export interface TemplateListResponse {
-  templates: TemplateInfo[];
-  total: number;
-}
-
 export async function generateDocument(
   documentType: string,
-  formData: FormData,
-  userId?: string
+  formData: FormData
 ): Promise<PopulatedDocument> {
   const res = await fetch(`${API_BASE}/api/generate`, {
     method: 'POST',
@@ -58,7 +43,6 @@ export async function generateDocument(
     body: JSON.stringify({
       document_type: documentType,
       form_data: formData,
-      user_id: userId || 'anonymous',
     }),
   });
 
@@ -69,32 +53,9 @@ export async function generateDocument(
   return res.json();
 }
 
-export async function generatePDF(
-  documentType: string,
-  formData: FormData,
-  userId?: string
-): Promise<Blob> {
-  const res = await fetch(`${API_BASE}/api/generate/pdf`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      document_type: documentType,
-      form_data: formData,
-      user_id: userId || 'anonymous',
-    }),
-  });
-
-  if (!res.ok) {
-    throw new Error(`Failed to generate PDF: ${res.statusText}`);
-  }
-
-  return res.blob();
-}
-
 export async function createSession(
   documentType: string,
-  formData: FormData,
-  userId: string
+  formData: FormData
 ): Promise<Session> {
   const res = await fetch(`${API_BASE}/api/sessions`, {
     method: 'POST',
@@ -102,7 +63,6 @@ export async function createSession(
     body: JSON.stringify({
       document_type: documentType,
       form_data: formData,
-      user_id: userId,
     }),
   });
 
@@ -128,16 +88,6 @@ export async function sendChatMessage(
 
   if (!res.ok) {
     throw new Error(`Failed to send chat message: ${res.statusText}`);
-  }
-
-  return res.json();
-}
-
-export async function getTemplates(): Promise<TemplateListResponse> {
-  const res = await fetch(`${API_BASE}/api/templates`);
-
-  if (!res.ok) {
-    throw new Error(`Failed to fetch templates: ${res.statusText}`);
   }
 
   return res.json();

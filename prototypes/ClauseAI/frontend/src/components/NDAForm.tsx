@@ -1,19 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { generateDocument, generatePDF, createSession, type FormData, type SessionResponse } from '@/lib/api';
+import { useState } from 'react';
+import { generateDocument, type FormData } from '@/lib/api';
 import ChatInterface from './ChatInterface';
-import ReactMarkdown from 'react-markdown';
 
 type InputMode = 'form' | 'chat';
 
-interface NDAFormProps {
-  documentType: string;
-  userId: string;
-  initialSession?: SessionResponse | null;
-}
-
-export default function NDAForm({ documentType, userId, initialSession }: NDAFormProps) {
+export default function NDAForm() {
   const [inputMode, setInputMode] = useState<InputMode>('form');
   const [formData, setFormData] = useState<FormData>({
     purpose: 'Exploring a potential business partnership',
@@ -26,13 +19,6 @@ export default function NDAForm({ documentType, userId, initialSession }: NDAFor
 
   const [preview, setPreview] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-
-  useEffect(() => {
-    if (initialSession) {
-      setFormData(initialSession.form_data);
-    }
-  }, [initialSession]);
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -41,7 +27,7 @@ export default function NDAForm({ documentType, userId, initialSession }: NDAFor
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
-      const result = await generateDocument(documentType, formData, userId);
+      const result = await generateDocument('Mutual-NDA', formData);
       setPreview(result.content);
     } catch (error) {
       console.error('Failed to generate document:', error);
@@ -51,23 +37,10 @@ export default function NDAForm({ documentType, userId, initialSession }: NDAFor
     }
   };
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      await createSession(documentType, formData, userId);
-      alert('Document saved successfully!');
-    } catch (error) {
-      console.error('Failed to save document:', error);
-      alert('Failed to save document. Please try again.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const handleDownload = async () => {
     setIsGenerating(true);
     try {
-      const result = await generateDocument(documentType, formData, userId);
+      const result = await generateDocument('Mutual-NDA', formData);
       const blob = new Blob([result.content], { type: 'text/markdown' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -85,32 +58,12 @@ export default function NDAForm({ documentType, userId, initialSession }: NDAFor
     }
   };
 
-  const handleDownloadPDF = async () => {
-    setIsGenerating(true);
-    try {
-      const blob = await generatePDF(documentType, formData, userId);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${documentType}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Failed to download PDF:', error);
-      alert('Failed to download PDF. Please try again.');
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
   const handleChatComplete = async (chatFormData: FormData) => {
     setFormData(chatFormData);
     setInputMode('form');
     setIsGenerating(true);
     try {
-      const result = await generateDocument(documentType, chatFormData, userId);
+      const result = await generateDocument('Mutual-NDA', chatFormData);
       setPreview(result.content);
     } catch (error) {
       console.error('Failed to generate document:', error);
@@ -147,8 +100,8 @@ export default function NDAForm({ documentType, userId, initialSession }: NDAFor
       </div>
 
       {inputMode === 'chat' ? (
-        <ChatInterface onComplete={handleChatComplete} documentType={documentType} />
-      ) : documentType === 'Mutual-NDA' ? (
+        <ChatInterface onComplete={handleChatComplete} documentType="Mutual-NDA" />
+      ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Form Panel */}
           <div className="bg-white rounded-lg border border-[var(--stroke)] p-6">
@@ -247,39 +200,21 @@ export default function NDAForm({ documentType, userId, initialSession }: NDAFor
             </p>
           </div>
 
-          <div className="space-y-3 pt-4">
-            <div className="flex gap-3">
-              <button
-                onClick={handleGenerate}
-                disabled={isGenerating || isSaving}
-                className="flex-1 bg-[var(--steel-blue)] text-white py-3 rounded-lg font-medium hover:bg-[var(--deep-navy)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {isGenerating ? 'Generating...' : 'Preview Document'}
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={isGenerating || isSaving}
-                className="flex-1 bg-[var(--gold-accent)] text-white py-3 rounded-lg font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-              >
-                {isSaving ? 'Saving...' : 'Save'}
-              </button>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={handleDownload}
-                disabled={isGenerating || isSaving}
-                className="flex-1 bg-[var(--success-green)] text-white py-3 rounded-lg font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-              >
-                Download Markdown
-              </button>
-              <button
-                onClick={handleDownloadPDF}
-                disabled={isGenerating || isSaving}
-                className="flex-1 bg-[var(--success-green)] text-white py-3 rounded-lg font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-              >
-                Download PDF
-              </button>
-            </div>
+          <div className="flex gap-3 pt-4">
+            <button
+              onClick={handleGenerate}
+              disabled={isGenerating}
+              className="flex-1 bg-[var(--steel-blue)] text-white py-3 rounded-lg font-medium hover:bg-[var(--deep-navy)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isGenerating ? 'Generating...' : 'Preview Document'}
+            </button>
+            <button
+              onClick={handleDownload}
+              disabled={isGenerating}
+              className="flex-1 bg-[var(--success-green)] text-white py-3 rounded-lg font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+            >
+              {isGenerating ? 'Downloading...' : 'Download'}
+            </button>
           </div>
         </div>
       </div>
@@ -288,45 +223,15 @@ export default function NDAForm({ documentType, userId, initialSession }: NDAFor
       <div className="bg-white rounded-lg border border-[var(--stroke)] p-6">
         <h2 className="text-xl font-semibold mb-6 text-[var(--deep-navy)]">Document Preview</h2>
         {preview ? (
-          <div className="pdf-preview bg-white border border-gray-200 rounded shadow-sm p-8 max-h-[800px] overflow-y-auto">
-            <div className="markdown-body">
-              <ReactMarkdown
-                components={{
-                  h1: ({...props}) => <h1 className="text-2xl font-bold mb-6 text-gray-900" {...props} />,
-                  h2: ({...props}) => <h2 className="text-xl font-semibold mb-4 mt-6 text-gray-900" {...props} />,
-                  h3: ({...props}) => <h3 className="text-lg font-semibold mb-3 mt-4 text-gray-900" {...props} />,
-                  p: ({...props}) => <p className="text-sm leading-relaxed mb-4 text-gray-800" {...props} />,
-                  ul: ({...props}) => <ul className="list-disc ml-6 mb-4 text-sm text-gray-800" {...props} />,
-                  ol: ({...props}) => <ol className="list-decimal ml-6 mb-4 text-sm text-gray-800" {...props} />,
-                  li: ({...props}) => <li className="mb-2 leading-relaxed" {...props} />,
-                  strong: ({...props}) => <strong className="font-semibold text-gray-900" {...props} />,
-                  em: ({...props}) => <em className="italic" {...props} />,
-                  blockquote: ({...props}) => <blockquote className="border-l-4 border-gray-300 pl-4 italic my-4 text-gray-700" {...props} />,
-                }}
-              >
-                {preview}
-              </ReactMarkdown>
-            </div>
+          <div className="prose prose-sm max-w-none">
+            <pre className="whitespace-pre-wrap text-sm leading-relaxed">{preview}</pre>
           </div>
         ) : (
           <p className="text-[var(--slate-gray)] text-sm">
-            Click &quot;Preview Document&quot; to see the populated document with your details.
+            Click &quot;Preview Document&quot; to see the populated NDA with your details.
           </p>
         )}
       </div>
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg border border-[var(--stroke)] p-8 text-center">
-          <h2 className="text-xl font-semibold mb-4 text-[var(--deep-navy)]">Document Type Not Yet Supported</h2>
-          <p className="text-[var(--slate-gray)] mb-6">
-            Manual form entry is currently only available for Mutual NDAs. Please use the AI Chat Assistant tab to explore other document types, or select Mutual NDA from the document selector above.
-          </p>
-          <button
-            onClick={() => setInputMode('chat')}
-            className="px-6 py-3 bg-[var(--steel-blue)] text-white font-medium rounded-lg hover:bg-[var(--deep-navy)] transition-colors"
-          >
-            Switch to AI Chat
-          </button>
         </div>
       )}
     </div>
