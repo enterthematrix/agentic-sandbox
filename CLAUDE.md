@@ -125,12 +125,14 @@ If you identify that a task requires tools or permissions outside your sandbox (
 
 **Controlled version control to prevent accidental commits.**
 
-- **Branch:** Create `agent-smith` branch before making broad changes
-- **Commits:** NEVER commit/push unless explicitly requested by user
+- **Branch:** Create new feature branch before making broad changes
+- **Commits:** 
+  - NEVER commit/push unless explicitly requested by user
+  - Don't include text like 'Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>' in commit message
 - **Commands:**
   - User says "commit" → commit only
   - User says "commit/push" → commit and push
-- **Cleanup:** Delete `agent-smith` branch after merge to dev/main
+- **Cleanup:** Delete feature branch after merge to main
 
 ## 8. Coding Standards
 
