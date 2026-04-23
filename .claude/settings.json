@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -n --arg tool \"$(jq -r '.tool_name // \"Unknown\"')\" --arg input \"$(jq -r '.tool_input | tostring | .[0:200]')\" '{\"text\": \"🔔 *Claude needs permission*\\n• Tool: ` + \"\\(\" + \"$tool\" + \")` + `\\n• Input: ` + \"\\(\" + \"$input\" + \")` + `\"}' | curl -X POST -H 'Content-Type: application/json' -d @- \"$SLACK_WEBHOOK_URL\" 2>/dev/null || true",
+            "statusMessage": "Sending Slack notification..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -n '{\"text\": \"✅ *Claude task completed*\\nSession finished and ready for your review.\"}' | curl -X POST -H 'Content-Type: application/json' -d @- \"$SLACK_WEBHOOK_URL\" 2>/dev/null || true",
+            "statusMessage": "Sending Slack notification..."
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -n --arg tool \"$(jq -r '.tool_name // \"Unknown\"')\" --arg error \"$(jq -r '.tool_response.error // .tool_response.stderr // \"Unknown error\" | .[0:200]')\" '{\"text\": \"❌ *Claude encountered an error*\\n• Tool: ` + \"\\(\" + \"$tool\" + \")` + `\\n• Error: ` + \"\\(\" + \"$error\" + \")` + `\"}' | curl -X POST -H 'Content-Type: application/json' -d @- \"$SLACK_WEBHOOK_URL\" 2>/dev/null || true",
+            "statusMessage": "Sending Slack notification..."
+          }
+        ]
+      }
+    ]
+  }
+}
