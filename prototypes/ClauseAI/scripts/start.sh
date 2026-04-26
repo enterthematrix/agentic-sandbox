@@ -49,5 +49,8 @@ echo ""
 echo "Press Ctrl+C to stop the server"
 echo ""
 
+# Set library path for WeasyPrint (macOS Homebrew)
+export DYLD_LIBRARY_PATH=/opt/homebrew/lib:$DYLD_LIBRARY_PATH
+
 cd backend
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload

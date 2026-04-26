@@ -68,18 +68,14 @@ ClauseAI/
 
 ### Configuration
 
-Create a `.env` file in the ClauseAI root directory:
-
-```bash
-cp .env.example .env
-```
-
-Add your Anthropic API key to enable AI chat features:
+A `.env` file is already configured in the ClauseAI root directory with OpenRouter API key:
 
 ```
-ANTHROPIC_API_KEY=your_api_key_here
+OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxxx
 API_PORT=8000
 ```
+
+**AI Model:** ClauseAI uses OpenRouter with the `openai/gpt-oss-120b` model for AI chat features.
 
 ### Development
 

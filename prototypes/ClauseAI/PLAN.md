@@ -49,6 +49,12 @@ For context, the CommonPaper GitHub account ([Common Paper](https://github.com/C
 2.  The AI should guide the user, asking questions related to necessary fields for the NDA.
 3.  The AI should populate the document in real-time based on the chat responses.
 
+**Implementation Details:**
+- Uses OpenRouter API with `openai/gpt-oss-120b` model
+- API key configured in `.env` file as `OPENROUTER_API_KEY`
+- Conversational interface guides users through required fields
+- Automatically populates form data when all information is collected
+
 ---
 
 ### CL-6: Expand to all supported legal document types
@@ -58,6 +64,11 @@ For context, the CommonPaper GitHub account ([Common Paper](https://github.com/C
 1.  Integrate the `catalog.json` data so the AI knows which documents are available.
 2.  If a user requests an unsupported document, the AI must explain the limitation and offer the closest relevant alternative from our library.
 3.  Maintain the guided conversational process for all supported document types.
+
+**Current Status:**
+- Chat interface currently supports Mutual NDA only
+- All 11 document templates available via manual form mode
+- AI chat expansion to other document types planned for future releases
 
 ---
 
