@@ -1,5 +1,3 @@
-# AGENT.md
-
 Behavioral guidelines for AI agents working in agentic-sandbox. These rules prioritize correctness and transparency over speed.
 
 **Tradeoff:** These guidelines bias toward caution and verification. For trivial tasks, use judgment.
@@ -106,6 +104,7 @@ Don't stay silent during long-running tasks. **Every 2 minutes of autonomous wor
 - Any unexpected blockers encountered
 - Track progress in `PROGRESS.md` (cleanup when done)
 
+
 ### Fail-Fast Protocol
 If you identify that a task requires tools or permissions outside your sandbox (e.g., global brew install):
 - **Report it immediately** rather than attempting workarounds
@@ -118,19 +117,22 @@ If you identify that a task requires tools or permissions outside your sandbox (
 
 - **Workspace:** You are restricted to `~/workspace/agentic-sandbox/`
 - **Exclusions:** Always respect `.aiexclude` patterns at the root
-- **Security:** NEVER access environment variables starting with `SLALOM_`
-- **Pre-flight:** Before executing any shell script you generate, run `ls -la` to verify target exists
+- **Security:** NEVER access environment variables starting with `PRIVATE_`
 
 ## 7. Git Workflow
 
 **Controlled version control to prevent accidental commits.**
 
-- **Branch:** Create `agent-smith` branch before making broad changes
-- **Commits:** NEVER commit/push unless explicitly requested by user
+- **Branch:** Create new feature branch before making broad changes
+- **Commits:** 
+  - NEVER commit/push unless explicitly requested by user
+  - Don't include text like 'Co-Authored-By: Claude' in commit message
+  - Never commit files matching *.env, *secret*, *.key, *.pem, or any file containing strings resembling API keys/tokens. Flag and stop.
+  - Never run 'git add .', be explicit about files being commited
 - **Commands:**
   - User says "commit" → commit only
   - User says "commit/push" → commit and push
-- **Cleanup:** Delete `agent-smith` branch after merge to dev/main
+- **Cleanup:** Delete feature branch after merge to main
 
 ## 8. Coding Standards
 
@@ -138,7 +140,7 @@ If you identify that a task requires tools or permissions outside your sandbox (
 
 - Use **latest versions** of libraries and idiomatic approaches
 - **Root cause analysis** before attempting any fix
-- Keep **READEs minimal** - only essential information
+- Keep **READMEs minimal** - only essential information
 - **NO emojis** in code or documentation (exception: user explicitly requests)
 
 ---
@@ -151,3 +153,19 @@ If you identify that a task requires tools or permissions outside your sandbox (
 - Minimal unnecessary changes in diffs
 - Clear proof of success before claiming completion
 - User rarely needs to correct approach or ask for verification
+
+## Cleanup rules
+- Ephemeral Files: Always delete any .tmp, debug.log, or intermediate test scripts (e.g., test_fix_v1.py) after a task is verified.
+- Documentation Upkeep: Before finishing any task, update the main README.md or SPEC.md and remove any outdated "TODO" or "WIP" comments created during the session.
+- Artifact Consolidation: If you create multiple small documentation fragments, merge them into the primary spec file and delete the fragments.
+```
+CLEANUP CONTRACT
+─────────────────────────────────────────────────────
+Naming:     Intermediate files must be prefixed _wip_ or _tmp_
+On start:   Scan for leftover _wip_/_tmp_ from prior sessions; resolve before proceeding
+On finish:  Delete all _wip_/_tmp_ files; no exceptions
+Spec rule:  SPEC.md = current behaviour only; add one changelog bullet per task
+Decisions:  Rationale, rejected approaches → DECISIONS.md (preserved)
+Staleness:  Update Last updated: headers on any file you modify
+Gate:       A task is not Done until the above pass is clean
+```
