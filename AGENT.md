@@ -156,7 +156,7 @@ If you identify that a task requires tools or permissions outside your sandbox (
 
 ## Cleanup rules
 - Ephemeral Files: Always delete any .tmp, debug.log, or intermediate test scripts (e.g., test_fix_v1.py) after a task is verified.
-- Documentation Upkeep: Before finishing any task, update the main README.md or SPEC.md and remove any outdated "TODO" or "WIP" comments created during the session.
+- Documentation Upkeep: Before finishing any task, update the main README.md / SPEC.md and remove any outdated "TODO" or "WIP" comments created during the session. No intermediate documentation at project root.
 - Artifact Consolidation: If you create multiple small documentation fragments, merge them into the primary spec file and delete the fragments.
 ```
 CLEANUP CONTRACT
