@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { ChatMessage, ChatResponse, FormData } from '@/lib/api';
-import { sendChatMessage, getTemplates } from '@/lib/api';
+import { sendChatMessage } from '@/lib/api';
 
 interface ChatInterfaceProps {
   onComplete: (formData: FormData) => void;
@@ -14,22 +14,6 @@ export default function ChatInterface({ onComplete, documentType }: ChatInterfac
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
-  const [documentName, setDocumentName] = useState('document');
-
-  useEffect(() => {
-    const fetchDocumentName = async () => {
-      try {
-        const templatesData = await getTemplates();
-        const template = templatesData.templates.find(t => t.filename === documentType);
-        if (template) {
-          setDocumentName(template.name);
-        }
-      } catch (error) {
-        console.error('Failed to fetch templates:', error);
-      }
-    };
-    fetchDocumentName();
-  }, [documentType]);
 
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return;
@@ -90,13 +74,13 @@ export default function ChatInterface({ onComplete, documentType }: ChatInterfac
             AI-Powered Document Assistant
           </h3>
           <p className="text-[#64748B] mb-6">
-            Let me guide you through creating your {documentName}. I'll ask a few questions to gather the necessary information.
+            Let me guide you through creating your Mutual NDA. I'll ask a few questions to gather the necessary information.
           </p>
           <button
             onClick={() => {
               const welcomeMessage: ChatMessage = {
                 role: 'assistant',
-                content: `Hello! I'm here to help you create a ${documentName}. Let's start by understanding the purpose of this agreement. What is the business purpose or context for this ${documentName}?`,
+                content: "Hello! I'm here to help you create a Mutual NDA. Let's start by understanding the purpose of this agreement. What is the business purpose for sharing confidential information?",
               };
               setMessages([welcomeMessage]);
             }}
